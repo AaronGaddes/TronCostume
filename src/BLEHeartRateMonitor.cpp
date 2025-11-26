@@ -13,6 +13,7 @@ BLEHeartRateMonitor::BLEHeartRateMonitor()
     : m_pBLEScan(nullptr),
       m_pClient(nullptr),
       m_pHeartRateCharacteristic(nullptr),
+      m_bleInitialized(false),
       m_deviceConnected(false),
       m_oldDeviceConnected(false),
       m_currentHeartRate(0),
@@ -34,11 +35,17 @@ BLEHeartRateMonitor::~BLEHeartRateMonitor()
 
 bool BLEHeartRateMonitor::begin()
 {
+  if (m_bleInitialized)
+  {
+    return true; // Already initialized
+  }
+
   Serial.println("BLE Heart Rate Monitor");
   Serial.println("======================");
 
   initializeBLE();
   setupScan();
+  m_bleInitialized = true;
 
   return true;
 }
@@ -60,6 +67,12 @@ void BLEHeartRateMonitor::setupScan()
 
 bool BLEHeartRateMonitor::scanForDevices(uint32_t scanDurationSeconds)
 {
+  if (!m_bleInitialized)
+  {
+    Serial.println("ERROR: BLE not initialized. Call begin() first.");
+    return false;
+  }
+
   Serial.println("Scanning for BLE devices...");
   m_discoveredDevices.clear();
 
@@ -101,6 +114,12 @@ void BLEHeartRateMonitor::displayDiscoveredDevices() const
 
 bool BLEHeartRateMonitor::connectToDevice(int deviceIndex)
 {
+  if (!m_bleInitialized)
+  {
+    Serial.println("ERROR: BLE not initialized. Call begin() first.");
+    return false;
+  }
+
   if (deviceIndex < 1 || deviceIndex > (int)m_discoveredDevices.size())
   {
     Serial.println("Invalid device number");
@@ -213,13 +232,30 @@ void BLEHeartRateMonitor::handleDisconnection()
 
 bool BLEHeartRateMonitor::shouldRescan() const
 {
-  if (m_deviceConnected)
+  if (!m_bleInitialized || m_deviceConnected)
   {
     return false;
   }
 
   unsigned long currentTime = millis();
   return (m_lastScanTime == 0 || (currentTime - m_lastScanTime >= m_scanInterval));
+}
+
+void BLEHeartRateMonitor::shutdown()
+{
+  if (!m_bleInitialized)
+  {
+    return; // Already shut down
+  }
+
+  disconnect();
+  
+  // Note: BLEDevice::deinit() may not be available in all ESP32 BLE libraries
+  // We'll just mark as not initialized and clean up resources
+  m_pBLEScan = nullptr;
+  m_bleInitialized = false;
+  
+  Serial.println("BLE Heart Rate Monitor shut down");
 }
 
 // Wrapper function for heart rate notification callback

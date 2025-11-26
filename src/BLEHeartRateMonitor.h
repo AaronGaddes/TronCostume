@@ -16,6 +16,8 @@ public:
 
   // Initialization
   bool begin();
+  bool isInitialized() const { return m_bleInitialized; }
+  void shutdown(); // Deinitialize BLE when not needed
   
   // Device discovery
   bool scanForDevices(uint32_t scanDurationSeconds = 5);
@@ -48,6 +50,7 @@ private:
   BLERemoteCharacteristic *m_pHeartRateCharacteristic;
   
   // State
+  bool m_bleInitialized;
   bool m_deviceConnected;
   bool m_oldDeviceConnected;
   

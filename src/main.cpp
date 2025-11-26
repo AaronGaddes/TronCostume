@@ -1,81 +1,172 @@
 #include <Arduino.h>
 #include "BLEHeartRateMonitor.h"
 #include "SerialUI.h"
+#include "LEDController.h"
+#include "AnimationManager.h"
+#include "AnimationMode.h"
 
 // Global instances
 BLEHeartRateMonitor heartRateMonitor;
 SerialUI serialUI;
+LEDController ledController;
+AnimationManager animationManager(&ledController);
+
+// State tracking
+bool modeMenuShown = false;
 
 void setup()
 {
   serialUI.begin(115200);
+  delay(1000); // Give serial time to initialize
 
-  // Initialize the heart rate monitor
-  heartRateMonitor.begin();
+  Serial.println("\n=== Tron Costume LED Controller ===");
+  Serial.println("Initializing...");
 
-  // Perform initial scan
-  heartRateMonitor.scanForDevices();
+  // Initialize LED controller
+  if (!ledController.begin())
+  {
+    Serial.println("ERROR: Failed to initialize LED controller");
+    while (1)
+      delay(1000); // Halt on error
+  }
+
+  // Initialize animation manager
+  if (!animationManager.begin())
+  {
+    Serial.println("ERROR: Failed to initialize animation manager");
+    while (1)
+      delay(1000); // Halt on error
+  }
+
+  // Start with OFF mode
+  animationManager.setMode(MODE_RAINBOW);
+  serialUI.displayCurrentMode(animationManager.getCurrentMode());
+
+  // Display mode menu
+  serialUI.displayModeMenu();
+  modeMenuShown = true;
+
+  Serial.println("\nSystem ready!");
 }
 
 void loop()
 {
-  // Update the monitor (handles connection state changes)
-  heartRateMonitor.update();
-
-  // Handle user input and device connection when not connected
-  if (!heartRateMonitor.isConnected())
+  // Check for mode selection input
+  int modeSelection = serialUI.checkModeSelection();
+  if (modeSelection >= 0)
   {
-    // Check if we should rescan
-    if (heartRateMonitor.shouldRescan())
-    {
-      int userInput = serialUI.checkUserInput();
+    AnimationMode newMode = (AnimationMode)modeSelection;
+    AnimationMode currentMode = animationManager.getCurrentMode();
 
-      if (userInput == -1)
+    // Check if we need to initialize/shutdown BLE
+    bool newModeNeedsHR = modeRequiresHeartRate(newMode);
+    bool currentModeNeedsHR = modeRequiresHeartRate(currentMode);
+
+    // If switching to a mode that needs HR, initialize BLE
+    if (newModeNeedsHR && !heartRateMonitor.isInitialized())
+    {
+      Serial.println("Initializing BLE for heart rate mode...");
+      if (!heartRateMonitor.begin())
       {
-        // No input, perform automatic rescan
+        Serial.println("ERROR: Failed to initialize BLE");
+        return;
+      }
+    }
+
+    // If switching away from HR mode, shutdown BLE
+    if (!newModeNeedsHR && currentModeNeedsHR && heartRateMonitor.isInitialized())
+    {
+      Serial.println("Shutting down BLE (not needed for current mode)...");
+      heartRateMonitor.shutdown();
+    }
+
+    // Set the new mode
+    animationManager.setMode(newMode);
+    serialUI.displayCurrentMode(newMode);
+
+    // If switching to heart rate mode and BLE is initialized but not connected, start scanning
+    if (newModeNeedsHR && heartRateMonitor.isInitialized() && !heartRateMonitor.isConnected())
+    {
+      if (heartRateMonitor.shouldRescan())
+      {
         heartRateMonitor.scanForDevices();
       }
-      else if (userInput == 0)
+    }
+  }
+
+  // Handle BLE operations only if heart rate mode is active
+  if (animationManager.requiresHeartRate() && heartRateMonitor.isInitialized())
+  {
+    // Update the monitor (handles connection state changes)
+    heartRateMonitor.update();
+
+    // Handle user input and device connection when not connected
+    if (!heartRateMonitor.isConnected())
+    {
+      // Check if we should rescan
+      if (heartRateMonitor.shouldRescan())
       {
-        // User requested rescan
-        heartRateMonitor.scanForDevices();
+        int userInput = serialUI.checkUserInput();
+
+        if (userInput == -1)
+        {
+          // No input, perform automatic rescan
+          heartRateMonitor.scanForDevices();
+        }
+        else if (userInput == 0)
+        {
+          // User requested rescan
+          heartRateMonitor.scanForDevices();
+        }
+        else if (userInput > 0)
+        {
+          // User selected a device
+          if (userInput <= (int)heartRateMonitor.getDiscoveredDeviceCount())
+          {
+            heartRateMonitor.connectToDevice(userInput);
+          }
+          else
+          {
+            serialUI.printError("Invalid device number");
+          }
+        }
       }
-      else if (userInput > 0)
+      else
       {
-        // User selected a device
-        if (userInput <= (int)heartRateMonitor.getDiscoveredDeviceCount())
+        // Check for user input while waiting for scan interval
+        int userInput = serialUI.checkUserInput();
+        if (userInput == 0)
+        {
+          heartRateMonitor.scanForDevices();
+        }
+        else if (userInput > 0 && userInput <= (int)heartRateMonitor.getDiscoveredDeviceCount())
         {
           heartRateMonitor.connectToDevice(userInput);
         }
-        else
-        {
-          serialUI.printError("Invalid device number");
-        }
       }
     }
-    else
+
+    // Get current heart rate for animation
+    uint16_t currentHeartRate = 0;
+    if (heartRateMonitor.hasNewHeartRate())
     {
-      // Check for user input while waiting for scan interval
-      int userInput = serialUI.checkUserInput();
-      if (userInput == 0)
-      {
-        heartRateMonitor.scanForDevices();
-      }
-      else if (userInput > 0 && userInput <= (int)heartRateMonitor.getDiscoveredDeviceCount())
-      {
-        heartRateMonitor.connectToDevice(userInput);
-      }
+      currentHeartRate = heartRateMonitor.getCurrentHeartRate();
+      heartRateMonitor.clearNewHeartRateFlag();
     }
-  }
+    else if (heartRateMonitor.isConnected())
+    {
+      // Use last known heart rate even if no new update
+      currentHeartRate = heartRateMonitor.getCurrentHeartRate();
+    }
 
-  // Check for new heart rate data (already printed by callback, but could add custom handling here)
-  if (heartRateMonitor.hasNewHeartRate())
+    // Update animation with heart rate
+    animationManager.update(currentHeartRate);
+  }
+  else
   {
-    // Heart rate is already printed by the notification callback
-    // Add any additional processing here if needed
-    // For example: uint16_t hr = heartRateMonitor.getCurrentHeartRate();
-    heartRateMonitor.clearNewHeartRateFlag();
+    // Update animation without heart rate (standalone modes)
+    animationManager.update(0);
   }
 
-  delay(100); // Small delay to prevent tight loop
+  delay(10); // Small delay to prevent tight loop
 }

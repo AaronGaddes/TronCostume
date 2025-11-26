@@ -2,6 +2,7 @@
 #define SERIAL_UI_H
 
 #include <Arduino.h>
+#include "AnimationMode.h"
 
 class SerialUI
 {
@@ -11,6 +12,11 @@ public:
   // Input handling
   int checkUserInput();
   bool hasInput() const { return Serial.available() > 0; }
+  
+  // Mode selection
+  int checkModeSelection(); // Returns mode number or -1 if no valid input
+  void displayModeMenu();
+  void displayCurrentMode(AnimationMode mode);
   
   // Output helpers
   void printPrompt(const char* message);
