@@ -18,6 +18,7 @@ export function BluetoothController() {
     connect,
     disconnect,
     setMode,
+    setColor,
     isConnected,
   } = useBluetooth();
 
@@ -159,6 +160,33 @@ export function BluetoothController() {
                 Setting mode...
               </p>
             )}
+          </div>
+        )}
+
+        {/* Color Picker for Solid Mode */}
+        {isConnected && currentMode === ANIMATION_MODES.MODE_SOLID && (
+          <div className="border rounded-lg p-4 space-y-4">
+            <h2 className="text-lg font-semibold">Solid Color</h2>
+            <div className="flex items-center gap-4">
+              <input
+                type="color"
+                id="colorPicker"
+                className="h-12 w-24 cursor-pointer rounded border"
+                onChange={(e) => {
+                  const hex = e.target.value;
+                  const r = parseInt(hex.slice(1, 3), 16);
+                  const g = parseInt(hex.slice(3, 5), 16);
+                  const b = parseInt(hex.slice(5, 7), 16);
+                  setColor(r, g, b).catch(console.error);
+                }}
+              />
+              <label
+                htmlFor="colorPicker"
+                className="text-sm text-muted-foreground"
+              >
+                Select color for solid mode
+              </label>
+            </div>
           </div>
         )}
 

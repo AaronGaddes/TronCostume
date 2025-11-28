@@ -12,6 +12,10 @@
 #define CONTROL_SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
 #define MODE_CONTROL_CHAR_UUID "19B10001-E8F2-537E-4F6C-D104768A1214"
 #define MODE_STATUS_CHAR_UUID "19B10002-E8F2-537E-4F6C-D104768A1214"
+#define COLOR_CONTROL_CHAR_UUID "19B10003-E8F2-537E-4F6C-D104768A1214"
+
+// Forward declaration
+class AnimationManager;
 
 // Callback class for mode control characteristic writes
 class ModeControlCallbacks : public BLECharacteristicCallbacks
@@ -23,6 +27,17 @@ public:
 private:
   AnimationMode *m_currentMode;
   bool *m_modeChanged;
+};
+
+// Callback class for color control characteristic writes
+class ColorControlCallbacks : public BLECharacteristicCallbacks
+{
+public:
+  ColorControlCallbacks(AnimationManager *animationManager);
+  void onWrite(BLECharacteristic *pCharacteristic) override;
+
+private:
+  AnimationManager *m_animationManager;
 };
 
 // Callback class for server events
@@ -41,6 +56,7 @@ class BLEControlService
 {
 public:
   BLEControlService();
+  BLEControlService(class AnimationManager *animationManager);
   ~BLEControlService();
 
   // Initialization
@@ -65,6 +81,7 @@ private:
   BLEService *m_pService;
   BLECharacteristic *m_pModeControlChar;
   BLECharacteristic *m_pModeStatusChar;
+  BLECharacteristic *m_pColorControlChar;
 
   bool m_initialized;
   bool m_deviceConnected;
@@ -72,6 +89,7 @@ private:
 
   AnimationMode m_currentMode;
   bool m_modeChanged;
+  AnimationManager *m_animationManager;
 
   void setupService();
   void notifyModeStatus();

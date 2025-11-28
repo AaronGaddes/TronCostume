@@ -3,6 +3,7 @@ import {
   CONTROL_SERVICE_UUID,
   MODE_CONTROL_CHAR_UUID,
   MODE_STATUS_CHAR_UUID,
+  COLOR_CONTROL_CHAR_UUID,
   DEVICE_NAME,
   ANIMATION_MODES,
   type AnimationMode,
@@ -16,6 +17,7 @@ class BluetoothServiceImpl implements BluetoothService {
   private service: BluetoothRemoteGATTService | null = null;
   private modeControlChar: BluetoothRemoteGATTCharacteristic | null = null;
   private modeStatusChar: BluetoothRemoteGATTCharacteristic | null = null;
+  private colorControlChar: BluetoothRemoteGATTCharacteristic | null = null;
   private connectionState: ConnectionState = "disconnected";
   private connectionStateCallbacks: ((state: ConnectionState) => void)[] = [];
   private modeChangeCallbacks: ((mode: AnimationMode) => void)[] = [];
@@ -92,6 +94,9 @@ class BluetoothServiceImpl implements BluetoothService {
       this.modeStatusChar = await this.service.getCharacteristic(
         MODE_STATUS_CHAR_UUID
       );
+      this.colorControlChar = await this.service.getCharacteristic(
+        COLOR_CONTROL_CHAR_UUID
+      );
 
       // Subscribe to mode status notifications
       await this.modeStatusChar.startNotifications();
@@ -146,6 +151,7 @@ class BluetoothServiceImpl implements BluetoothService {
     this.service = null;
     this.modeControlChar = null;
     this.modeStatusChar = null;
+    this.colorControlChar = null;
   }
 
   async setMode(mode: AnimationMode): Promise<void> {
@@ -173,6 +179,24 @@ class BluetoothServiceImpl implements BluetoothService {
 
     await this.readCurrentMode();
     return this.currentMode;
+  }
+
+  async setColor(r: number, g: number, b: number): Promise<void> {
+    if (!this.colorControlChar) {
+      throw new Error("Not connected to device");
+    }
+
+    if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+      throw new Error(`Invalid color values: RGB(${r}, ${g}, ${b})`);
+    }
+
+    try {
+      const data = new Uint8Array([r, g, b]);
+      await this.colorControlChar.writeValue(data);
+    } catch (error) {
+      console.error("Failed to set color:", error);
+      throw new Error("Failed to set color on device");
+    }
   }
 
   private async readCurrentMode(): Promise<void> {

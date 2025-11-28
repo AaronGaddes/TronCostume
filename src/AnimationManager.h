@@ -9,7 +9,7 @@
 class AnimationManager
 {
 public:
-  AnimationManager(LEDController* ledController);
+  AnimationManager(LEDController *ledController);
   ~AnimationManager();
 
   // Initialization
@@ -20,6 +20,10 @@ public:
   AnimationMode getCurrentMode() const { return m_currentMode; }
   bool requiresHeartRate() const;
 
+  // Color management (for solid mode)
+  void setSolidColor(uint8_t r, uint8_t g, uint8_t b);
+  void setSolidColor(uint32_t rgb); // RGB packed as 0xRRGGBB
+
   // Update - call this in main loop
   void update(uint16_t currentHeartRate = 0);
 
@@ -27,13 +31,13 @@ public:
   void reset();
 
 private:
-  LEDController* m_ledController;
-  HeartRateAnimation* m_heartRateAnimation;
-  StandaloneAnimations* m_standaloneAnimations;
-  
+  LEDController *m_ledController;
+  HeartRateAnimation *m_heartRateAnimation;
+  StandaloneAnimations *m_standaloneAnimations;
+
   AnimationMode m_currentMode;
   bool m_initialized;
+  CRGB m_solidColor; // Current solid color
 };
 
 #endif // ANIMATION_MANAGER_H
-

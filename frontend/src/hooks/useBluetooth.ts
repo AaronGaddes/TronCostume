@@ -76,6 +76,18 @@ export function useBluetooth() {
     }
   }, []);
 
+  const setColor = useCallback(async (r: number, g: number, b: number) => {
+    try {
+      setError(null);
+      await bluetoothService.setColor(r, g, b);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to set color";
+      setError(errorMessage);
+      throw err;
+    }
+  }, []);
+
   return {
     connectionState,
     currentMode,
@@ -83,6 +95,7 @@ export function useBluetooth() {
     connect,
     disconnect,
     setMode,
+    setColor,
     isConnected: connectionState === "connected",
   };
 }

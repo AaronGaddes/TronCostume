@@ -2,6 +2,7 @@
 export const CONTROL_SERVICE_UUID = "19b10000-e8f2-537e-4f6c-d104768a1214";
 export const MODE_CONTROL_CHAR_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
 export const MODE_STATUS_CHAR_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
+export const COLOR_CONTROL_CHAR_UUID = "19b10003-e8f2-537e-4f6c-d104768a1214";
 
 // Device name
 export const DEVICE_NAME = "ESP32-LED-Controller";
@@ -29,6 +30,7 @@ export interface BluetoothService {
   disconnect(): void;
   setMode(mode: AnimationMode): Promise<void>;
   getCurrentMode(): Promise<AnimationMode>;
+  setColor(r: number, g: number, b: number): Promise<void>;
   isConnected(): boolean;
   getConnectionState(): ConnectionState;
   onConnectionStateChange(callback: (state: ConnectionState) => void): void;

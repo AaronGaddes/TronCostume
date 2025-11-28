@@ -8,10 +8,10 @@
 
 // Global instances
 BLEHeartRateMonitor heartRateMonitor;
-BLEControlService bleControlService;
 SerialUI serialUI;
 LEDController ledController;
 AnimationManager animationManager(&ledController);
+BLEControlService bleControlService(&animationManager);
 
 // State tracking
 bool modeMenuShown = false;

@@ -1,4 +1,5 @@
 #include "BLEControlService.h"
+#include "AnimationManager.h"
 #include <Arduino.h>
 
 // ModeControlCallbacks implementation
@@ -62,17 +63,63 @@ void ControlServerCallbacks::onDisconnect(BLEServer *pServer)
   Serial.println("BLE: Advertising restarted");
 }
 
+// ColorControlCallbacks implementation
+ColorControlCallbacks::ColorControlCallbacks(AnimationManager *animationManager)
+    : m_animationManager(animationManager)
+{
+}
+
+void ColorControlCallbacks::onWrite(BLECharacteristic *pCharacteristic)
+{
+  if (m_animationManager == nullptr)
+  {
+    return;
+  }
+
+  std::string value = pCharacteristic->getValue();
+
+  // Expect 3 bytes: R, G, B
+  if (value.length() == 3)
+  {
+    uint8_t r = value[0];
+    uint8_t g = value[1];
+    uint8_t b = value[2];
+
+    m_animationManager->setSolidColor(r, g, b);
+
+    Serial.print("BLE: Color changed to RGB(");
+    Serial.print(r);
+    Serial.print(", ");
+    Serial.print(g);
+    Serial.print(", ");
+    Serial.print(b);
+    Serial.println(")");
+  }
+  else
+  {
+    Serial.print("BLE: Invalid color data length received: ");
+    Serial.println(value.length());
+  }
+}
+
 // BLEControlService implementation
 BLEControlService::BLEControlService()
+    : BLEControlService(nullptr)
+{
+}
+
+BLEControlService::BLEControlService(AnimationManager *animationManager)
     : m_pServer(nullptr),
       m_pService(nullptr),
       m_pModeControlChar(nullptr),
       m_pModeStatusChar(nullptr),
+      m_pColorControlChar(nullptr),
       m_initialized(false),
       m_deviceConnected(false),
       m_oldDeviceConnected(false),
       m_currentMode(MODE_OFF),
-      m_modeChanged(false)
+      m_modeChanged(false),
+      m_animationManager(animationManager)
 {
 }
 
@@ -150,6 +197,17 @@ void BLEControlService::setupService()
 
   // Add descriptor for notifications
   m_pModeStatusChar->addDescriptor(new BLE2902());
+
+  // Create Color Control Characteristic (write) - for solid mode color
+  m_pColorControlChar = m_pService->createCharacteristic(
+      COLOR_CONTROL_CHAR_UUID,
+      BLECharacteristic::PROPERTY_WRITE);
+
+  if (m_animationManager != nullptr)
+  {
+    m_pColorControlChar->setCallbacks(
+        new ColorControlCallbacks(m_animationManager));
+  }
 
   // Start the service
   m_pService->start();
