@@ -1,12 +1,8 @@
 import "./App.css";
-import { Button } from "@/components/ui/button";
+import { BluetoothController } from "@/components/BluetoothController";
 
 function App() {
-  return (
-    <>
-      <Button>Click me</Button>
-    </>
-  );
+  return <BluetoothController />;
 }
 
 export default App;

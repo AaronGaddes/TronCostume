@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "BLEHeartRateMonitor.h"
+#include "BLEControlService.h"
 #include "SerialUI.h"
 #include "LEDController.h"
 #include "AnimationManager.h"
@@ -7,6 +8,7 @@
 
 // Global instances
 BLEHeartRateMonitor heartRateMonitor;
+BLEControlService bleControlService;
 SerialUI serialUI;
 LEDController ledController;
 AnimationManager animationManager(&ledController);
@@ -38,8 +40,17 @@ void setup()
       delay(1000); // Halt on error
   }
 
-  // Start with OFF mode
+  // Initialize BLE Control Service (for frontend connection)
+  if (!bleControlService.begin())
+  {
+    Serial.println("ERROR: Failed to initialize BLE Control Service");
+    while (1)
+      delay(1000); // Halt on error
+  }
+
+  // Start with RAINBOW mode
   animationManager.setMode(MODE_RAINBOW);
+  bleControlService.setCurrentMode(MODE_RAINBOW);
   serialUI.displayCurrentMode(animationManager.getCurrentMode());
 
   // Display mode menu
@@ -51,7 +62,59 @@ void setup()
 
 void loop()
 {
-  // Check for mode selection input
+  // Update BLE Control Service (handles connections and notifications)
+  bleControlService.update();
+
+  // Check for mode selection from BLE
+  if (bleControlService.hasModeChanged())
+  {
+    AnimationMode newMode = bleControlService.getCurrentMode();
+    AnimationMode currentMode = animationManager.getCurrentMode();
+
+    // Check if we need to initialize/shutdown BLE for heart rate
+    bool newModeNeedsHR = modeRequiresHeartRate(newMode);
+    bool currentModeNeedsHR = modeRequiresHeartRate(currentMode);
+
+    // If switching to a mode that needs HR, initialize BLE
+    if (newModeNeedsHR && !heartRateMonitor.isInitialized())
+    {
+      Serial.println("Initializing BLE for heart rate mode...");
+      if (!heartRateMonitor.begin())
+      {
+        Serial.println("ERROR: Failed to initialize BLE");
+        bleControlService.clearModeChangedFlag();
+        return;
+      }
+    }
+
+    // If switching away from HR mode, shutdown BLE
+    if (!newModeNeedsHR && currentModeNeedsHR && heartRateMonitor.isInitialized())
+    {
+      Serial.println("Shutting down BLE (not needed for current mode)...");
+      heartRateMonitor.shutdown();
+    }
+
+    // Set the new mode
+    animationManager.setMode(newMode);
+    // Sync the mode back to BLE service to ensure it's in sync and notify clients
+    bleControlService.setCurrentMode(newMode);
+    // Force notification to ensure frontend stays in sync
+    bleControlService.notifyCurrentMode();
+    serialUI.displayCurrentMode(newMode);
+
+    // If switching to heart rate mode and BLE is initialized but not connected, start scanning
+    if (newModeNeedsHR && heartRateMonitor.isInitialized() && !heartRateMonitor.isConnected())
+    {
+      if (heartRateMonitor.shouldRescan())
+      {
+        heartRateMonitor.scanForDevices();
+      }
+    }
+
+    bleControlService.clearModeChangedFlag();
+  }
+
+  // Check for mode selection input from serial
   int modeSelection = serialUI.checkModeSelection();
   if (modeSelection >= 0)
   {
@@ -82,6 +145,7 @@ void loop()
 
     // Set the new mode
     animationManager.setMode(newMode);
+    bleControlService.setCurrentMode(newMode);
     serialUI.displayCurrentMode(newMode);
 
     // If switching to heart rate mode and BLE is initialized but not connected, start scanning

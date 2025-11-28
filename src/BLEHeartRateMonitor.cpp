@@ -52,7 +52,11 @@ bool BLEHeartRateMonitor::begin()
 
 void BLEHeartRateMonitor::initializeBLE()
 {
-  BLEDevice::init("");
+  // Only initialize if not already initialized (might be initialized by BLEControlService)
+  if (!BLEDevice::getInitialized())
+  {
+    BLEDevice::init("");
+  }
 }
 
 void BLEHeartRateMonitor::setupScan()
@@ -249,12 +253,12 @@ void BLEHeartRateMonitor::shutdown()
   }
 
   disconnect();
-  
+
   // Note: BLEDevice::deinit() may not be available in all ESP32 BLE libraries
   // We'll just mark as not initialized and clean up resources
   m_pBLEScan = nullptr;
   m_bleInitialized = false;
-  
+
   Serial.println("BLE Heart Rate Monitor shut down");
 }
 
