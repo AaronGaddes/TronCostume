@@ -87,11 +87,12 @@ void loop()
       }
     }
 
-    // If switching away from HR mode, shutdown BLE
-    if (!newModeNeedsHR && currentModeNeedsHR && heartRateMonitor.isInitialized())
+    // If switching away from HR mode, disconnect the heart rate monitor client
+    // (but keep BLE stack running for the control service)
+    if (!newModeNeedsHR && currentModeNeedsHR && heartRateMonitor.isConnected())
     {
-      Serial.println("Shutting down BLE (not needed for current mode)...");
-      heartRateMonitor.shutdown();
+      Serial.println("Disconnecting heart rate monitor (not needed for current mode)...");
+      heartRateMonitor.disconnect();
     }
 
     // Set the new mode
@@ -102,12 +103,13 @@ void loop()
     bleControlService.notifyCurrentMode();
     serialUI.displayCurrentMode(newMode);
 
-    // If switching to heart rate mode and BLE is initialized but not connected, start scanning
+    // If switching to heart rate mode and BLE is initialized but not connected, auto-connect to first heart rate device
     if (newModeNeedsHR && heartRateMonitor.isInitialized() && !heartRateMonitor.isConnected())
     {
-      if (heartRateMonitor.shouldRescan())
+      Serial.println("Attempting to auto-connect to heart rate device...");
+      if (!heartRateMonitor.connectToFirstHeartRateDevice())
       {
-        heartRateMonitor.scanForDevices();
+        Serial.println("Failed to auto-connect to heart rate device. Will retry on next scan interval.");
       }
     }
 
@@ -136,11 +138,12 @@ void loop()
       }
     }
 
-    // If switching away from HR mode, shutdown BLE
-    if (!newModeNeedsHR && currentModeNeedsHR && heartRateMonitor.isInitialized())
+    // If switching away from HR mode, disconnect the heart rate monitor client
+    // (but keep BLE stack running for the control service)
+    if (!newModeNeedsHR && currentModeNeedsHR && heartRateMonitor.isConnected())
     {
-      Serial.println("Shutting down BLE (not needed for current mode)...");
-      heartRateMonitor.shutdown();
+      Serial.println("Disconnecting heart rate monitor (not needed for current mode)...");
+      heartRateMonitor.disconnect();
     }
 
     // Set the new mode
@@ -148,12 +151,13 @@ void loop()
     bleControlService.setCurrentMode(newMode);
     serialUI.displayCurrentMode(newMode);
 
-    // If switching to heart rate mode and BLE is initialized but not connected, start scanning
+    // If switching to heart rate mode and BLE is initialized but not connected, auto-connect to first heart rate device
     if (newModeNeedsHR && heartRateMonitor.isInitialized() && !heartRateMonitor.isConnected())
     {
-      if (heartRateMonitor.shouldRescan())
+      Serial.println("Attempting to auto-connect to heart rate device...");
+      if (!heartRateMonitor.connectToFirstHeartRateDevice())
       {
-        heartRateMonitor.scanForDevices();
+        Serial.println("Failed to auto-connect to heart rate device. Will retry on next scan interval.");
       }
     }
   }
@@ -174,8 +178,11 @@ void loop()
 
         if (userInput == -1)
         {
-          // No input, perform automatic rescan
-          heartRateMonitor.scanForDevices();
+          // No input, perform automatic connection to first heart rate device
+          if (!heartRateMonitor.connectToFirstHeartRateDevice())
+          {
+            Serial.println("Auto-connect failed. Use serial input to manually select a device.");
+          }
         }
         else if (userInput == 0)
         {
@@ -184,7 +191,7 @@ void loop()
         }
         else if (userInput > 0)
         {
-          // User selected a device
+          // User selected a device manually
           if (userInput <= (int)heartRateMonitor.getDiscoveredDeviceCount())
           {
             heartRateMonitor.connectToDevice(userInput);

@@ -159,6 +159,42 @@ bool BLEHeartRateMonitor::connectToDevice(int deviceIndex)
   return true;
 }
 
+bool BLEHeartRateMonitor::connectToFirstHeartRateDevice()
+{
+  if (!m_bleInitialized)
+  {
+    Serial.println("ERROR: BLE not initialized. Call begin() first.");
+    return false;
+  }
+
+  if (m_deviceConnected)
+  {
+    Serial.println("Already connected to a device");
+    return true;
+  }
+
+  Serial.println("Scanning for heart rate device...");
+
+  // Scan for devices (scanForDevices already filters for devices with heart rate service)
+  if (!scanForDevices(5)) // 5 second scan
+  {
+    Serial.println("No heart rate devices found during scan");
+    return false;
+  }
+
+  // Connect to the first device found (all discovered devices have heart rate service)
+  if (m_discoveredDevices.size() == 0)
+  {
+    Serial.println("No heart rate devices found");
+    return false;
+  }
+
+  Serial.print("Found heart rate device: ");
+  Serial.print(m_discoveredDevices[0].name.c_str());
+  Serial.println(", connecting...");
+  return connectToDevice(1); // Connect to first device (1-based index)
+}
+
 bool BLEHeartRateMonitor::discoverHeartRateService()
 {
   // Get Heart Rate Service
