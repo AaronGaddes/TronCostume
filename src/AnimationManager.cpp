@@ -151,21 +151,21 @@ void AnimationManager::update(uint16_t currentHeartRate)
   case MODE_BREATHING:
     if (m_standaloneAnimations != nullptr)
     {
-      m_standaloneAnimations->breathing();
+      m_standaloneAnimations->breathing(m_solidColor);
     }
     break;
 
   case MODE_CHASE:
     if (m_standaloneAnimations != nullptr)
     {
-      m_standaloneAnimations->chase();
+      m_standaloneAnimations->chase(m_solidColor);
     }
     break;
 
   case MODE_TWINKLE:
     if (m_standaloneAnimations != nullptr)
     {
-      m_standaloneAnimations->twinkle();
+      m_standaloneAnimations->twinkle(m_solidColor);
     }
     break;
 
@@ -199,13 +199,29 @@ void AnimationManager::setSolidColor(uint8_t r, uint8_t g, uint8_t b)
 {
   m_solidColor = CRGB(r, g, b);
 
-  // If currently in solid mode, update immediately
-  if (m_currentMode == MODE_SOLID && m_standaloneAnimations != nullptr)
+  // If currently in a mode that uses color, update immediately
+  if (m_standaloneAnimations != nullptr)
   {
-    m_standaloneAnimations->solid(m_solidColor);
+    switch (m_currentMode)
+    {
+    case MODE_SOLID:
+      m_standaloneAnimations->solid(m_solidColor);
+      break;
+    case MODE_BREATHING:
+      m_standaloneAnimations->breathing(m_solidColor);
+      break;
+    case MODE_CHASE:
+      m_standaloneAnimations->chase(m_solidColor);
+      break;
+    case MODE_TWINKLE:
+      m_standaloneAnimations->twinkle(m_solidColor);
+      break;
+    default:
+      break;
+    }
   }
 
-  Serial.print("Solid color set to RGB(");
+  Serial.print("Color set to RGB(");
   Serial.print(r);
   Serial.print(", ");
   Serial.print(g);

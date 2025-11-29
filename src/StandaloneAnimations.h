@@ -15,9 +15,9 @@ public:
   void off();
   void solid(CRGB color);
   void rainbow();
-  void breathing();
-  void chase();
-  void twinkle();
+  void breathing(CRGB color);
+  void chase(CRGB color);
+  void twinkle(CRGB color);
   void fire();
   void colorWave();
 

@@ -79,7 +79,7 @@ void StandaloneAnimations::rainbow()
   }
 }
 
-void StandaloneAnimations::breathing()
+void StandaloneAnimations::breathing(CRGB color)
 {
   if (m_ledController == nullptr)
   {
@@ -108,16 +108,17 @@ void StandaloneAnimations::breathing()
     float brightness = (sineValue + 1.0f) * 0.5f;               // 0.0 to 1.0
     uint8_t brightnessValue = 50 + (uint8_t)(brightness * 205); // 50 to 255
 
-    // Apply cyan color with breathing brightness
-    CRGB color = CRGB(0, brightnessValue, brightnessValue);
-    m_ledController->fill(color);
+    // Apply selected color with breathing brightness
+    CRGB breathingColor = color;
+    breathingColor.nscale8(brightnessValue);
+    m_ledController->fill(breathingColor);
     m_ledController->show();
 
     m_lastUpdateTime = currentTime;
   }
 }
 
-void StandaloneAnimations::chase()
+void StandaloneAnimations::chase(CRGB color)
 {
   if (m_ledController == nullptr)
   {
@@ -150,7 +151,7 @@ void StandaloneAnimations::chase()
       pos = (ledCount * 2) - m_chasePosition - 1;
     }
 
-    // Set chase light (white with trail)
+    // Set chase light with selected color and trail
     for (int i = -2; i <= 2; i++)
     {
       int ledIndex = pos + i;
@@ -161,7 +162,9 @@ void StandaloneAnimations::chase()
           brightness = 128;
         if (abs(i) == 2)
           brightness = 64;
-        leds[ledIndex] = CRGB(brightness, brightness, brightness);
+        CRGB chaseColor = color;
+        chaseColor.nscale8(brightness);
+        leds[ledIndex] = chaseColor;
       }
     }
 
@@ -170,7 +173,7 @@ void StandaloneAnimations::chase()
   }
 }
 
-void StandaloneAnimations::twinkle()
+void StandaloneAnimations::twinkle(CRGB color)
 {
   if (m_ledController == nullptr)
   {
@@ -206,14 +209,15 @@ void StandaloneAnimations::twinkle()
       }
     }
 
-    // Apply sparkles to LEDs
+    // Apply sparkles to LEDs with selected color
     for (uint16_t i = 0; i < ledCount && i < 30; i++)
     {
       if (m_twinkleSparkles[i] > 0)
       {
-        // Random color for each sparkle
-        uint8_t hue = random(256);
-        leds[i] = CHSV(hue, 255, m_twinkleSparkles[i]);
+        // Use selected color with sparkle brightness
+        CRGB sparkleColor = color;
+        sparkleColor.nscale8(m_twinkleSparkles[i]);
+        leds[i] = sparkleColor;
       }
       else
       {
