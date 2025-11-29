@@ -12,7 +12,12 @@ export const ANIMATION_MODES = {
   MODE_OFF: 0,
   MODE_SOLID: 1,
   MODE_RAINBOW: 2,
-  MODE_HEART_RATE_PULSE: 3,
+  MODE_BREATHING: 3,
+  MODE_CHASE: 4,
+  MODE_TWINKLE: 5,
+  MODE_FIRE: 6,
+  MODE_COLOR_WAVE: 7,
+  MODE_HEART_RATE_PULSE: 8,
 };
 export type AnimationMode =
   (typeof ANIMATION_MODES)[keyof typeof ANIMATION_MODES];

@@ -6,6 +6,11 @@ enum AnimationMode
   MODE_OFF = 0,
   MODE_SOLID,
   MODE_RAINBOW,
+  MODE_BREATHING,
+  MODE_CHASE,
+  MODE_TWINKLE,
+  MODE_FIRE,
+  MODE_COLOR_WAVE,
   MODE_HEART_RATE_PULSE,
   MODE_COUNT // Total number of modes
 };
@@ -17,7 +22,6 @@ inline bool modeRequiresHeartRate(AnimationMode mode)
 }
 
 // Get mode name as string
-const char* getModeName(AnimationMode mode);
+const char *getModeName(AnimationMode mode);
 
 #endif // ANIMATION_MODE_H
-

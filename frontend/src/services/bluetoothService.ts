@@ -159,7 +159,7 @@ class BluetoothServiceImpl implements BluetoothService {
       throw new Error("Not connected to device");
     }
 
-    if (mode < 0 || mode > 3) {
+    if (mode < 0 || mode > 8) {
       throw new Error(`Invalid mode: ${mode}`);
     }
 
@@ -207,7 +207,7 @@ class BluetoothServiceImpl implements BluetoothService {
     try {
       const value = await this.modeStatusChar.readValue();
       const mode = value.getUint8(0);
-      if (mode >= 0 && mode <= 3) {
+      if (mode >= 0 && mode <= 8) {
         this.currentMode = mode as AnimationMode;
         this.modeChangeCallbacks.forEach((callback) =>
           callback(this.currentMode)
@@ -223,7 +223,7 @@ class BluetoothServiceImpl implements BluetoothService {
     const value = characteristic.value;
     if (value) {
       const mode = value.getUint8(0);
-      if (mode >= 0 && mode <= 3) {
+      if (mode >= 0 && mode <= 8) {
         this.currentMode = mode as AnimationMode;
         this.modeChangeCallbacks.forEach((callback) =>
           callback(this.currentMode)

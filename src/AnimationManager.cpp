@@ -87,6 +87,26 @@ void AnimationManager::setMode(AnimationMode mode)
     // Will be updated in update() loop
     break;
 
+  case MODE_BREATHING:
+    // Will be updated in update() loop
+    break;
+
+  case MODE_CHASE:
+    // Will be updated in update() loop
+    break;
+
+  case MODE_TWINKLE:
+    // Will be updated in update() loop
+    break;
+
+  case MODE_FIRE:
+    // Will be updated in update() loop
+    break;
+
+  case MODE_COLOR_WAVE:
+    // Will be updated in update() loop
+    break;
+
   case MODE_HEART_RATE_PULSE:
     if (m_heartRateAnimation != nullptr)
     {
@@ -125,6 +145,41 @@ void AnimationManager::update(uint16_t currentHeartRate)
     if (m_standaloneAnimations != nullptr)
     {
       m_standaloneAnimations->rainbow();
+    }
+    break;
+
+  case MODE_BREATHING:
+    if (m_standaloneAnimations != nullptr)
+    {
+      m_standaloneAnimations->breathing();
+    }
+    break;
+
+  case MODE_CHASE:
+    if (m_standaloneAnimations != nullptr)
+    {
+      m_standaloneAnimations->chase();
+    }
+    break;
+
+  case MODE_TWINKLE:
+    if (m_standaloneAnimations != nullptr)
+    {
+      m_standaloneAnimations->twinkle();
+    }
+    break;
+
+  case MODE_FIRE:
+    if (m_standaloneAnimations != nullptr)
+    {
+      m_standaloneAnimations->fire();
+    }
+    break;
+
+  case MODE_COLOR_WAVE:
+    if (m_standaloneAnimations != nullptr)
+    {
+      m_standaloneAnimations->colorWave();
     }
     break;
 
