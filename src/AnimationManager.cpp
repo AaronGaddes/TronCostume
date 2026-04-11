@@ -11,7 +11,8 @@ AnimationManager::AnimationManager(LEDController *ledController)
       m_currentMode(MODE_OFF),
       m_initialized(false),
       m_solidColor(CRGB::White), // Default to white
-      m_heartRateRainbowCycle(false)
+      m_heartRateRainbowCycle(false),
+      m_heartRateRainbowInPulse(false)
 {
 }
 
@@ -191,12 +192,13 @@ void AnimationManager::update(uint16_t currentHeartRate)
     if (m_heartRateAnimation != nullptr)
     {
       CRGB pulseColor = m_solidColor;
-      if (m_heartRateRainbowCycle)
+      if (m_heartRateRainbowCycle && !m_heartRateRainbowInPulse)
       {
         uint8_t hue = (uint8_t)((millis() / HR_RAINBOW_MS_PER_HUE_STEP) & 0xFF);
         pulseColor = CHSV(hue, 255, 255);
       }
-      m_heartRateAnimation->update(currentHeartRate, pulseColor);
+      m_heartRateAnimation->update(currentHeartRate, pulseColor,
+                                   m_heartRateRainbowInPulse);
     }
     break;
 
@@ -243,7 +245,14 @@ void AnimationManager::setSolidColor(uint8_t r, uint8_t g, uint8_t b)
 void AnimationManager::setHeartRateRainbowCycle(bool enabled)
 {
   m_heartRateRainbowCycle = enabled;
-  Serial.print("BLE: Heart rate rainbow cycle ");
+  Serial.print("Heart rate rainbow (global hue) ");
+  Serial.println(enabled ? "on" : "off");
+}
+
+void AnimationManager::setHeartRateRainbowInPulse(bool enabled)
+{
+  m_heartRateRainbowInPulse = enabled;
+  Serial.print("Heart rate rainbow (within pulse) ");
   Serial.println(enabled ? "on" : "off");
 }
 

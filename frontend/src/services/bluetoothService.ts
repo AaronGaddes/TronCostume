@@ -5,6 +5,7 @@ import {
   MODE_STATUS_CHAR_UUID,
   COLOR_CONTROL_CHAR_UUID,
   HEART_RATE_RAINBOW_CHAR_UUID,
+  HEART_RATE_RAINBOW_IN_PULSE_CHAR_UUID,
   DEVICE_NAME,
   ANIMATION_MODES,
   type AnimationMode,
@@ -20,6 +21,8 @@ class BluetoothServiceImpl implements BluetoothService {
   private modeStatusChar: BluetoothRemoteGATTCharacteristic | null = null;
   private colorControlChar: BluetoothRemoteGATTCharacteristic | null = null;
   private heartRateRainbowChar: BluetoothRemoteGATTCharacteristic | null = null;
+  private heartRateRainbowInPulseChar: BluetoothRemoteGATTCharacteristic | null =
+    null;
   private connectionState: ConnectionState = "disconnected";
   private connectionStateCallbacks: ((state: ConnectionState) => void)[] = [];
   private modeChangeCallbacks: ((mode: AnimationMode) => void)[] = [];
@@ -111,6 +114,17 @@ class BluetoothServiceImpl implements BluetoothService {
         );
       }
 
+      try {
+        this.heartRateRainbowInPulseChar = await this.service.getCharacteristic(
+          HEART_RATE_RAINBOW_IN_PULSE_CHAR_UUID
+        );
+      } catch {
+        this.heartRateRainbowInPulseChar = null;
+        console.warn(
+          "Heart rate rainbow-in-pulse characteristic unavailable (update device firmware?)"
+        );
+      }
+
       // Subscribe to mode status notifications
       await this.modeStatusChar.startNotifications();
       this.modeStatusChar.addEventListener(
@@ -166,6 +180,7 @@ class BluetoothServiceImpl implements BluetoothService {
     this.modeStatusChar = null;
     this.colorControlChar = null;
     this.heartRateRainbowChar = null;
+    this.heartRateRainbowInPulseChar = null;
   }
 
   async setMode(mode: AnimationMode): Promise<void> {
@@ -227,6 +242,44 @@ class BluetoothServiceImpl implements BluetoothService {
 
   supportsHeartRateRainbowCycle(): boolean {
     return this.heartRateRainbowChar !== null;
+  }
+
+  async getHeartRateRainbowInPulse(): Promise<boolean> {
+    if (!this.heartRateRainbowInPulseChar) {
+      return false;
+    }
+
+    try {
+      const value = await this.heartRateRainbowInPulseChar.readValue();
+      return value.getUint8(0) !== 0;
+    } catch (error) {
+      console.error("Failed to read heart rate rainbow-in-pulse option:", error);
+      throw new Error(
+        "Failed to read heart rate rainbow-in-pulse option from device"
+      );
+    }
+  }
+
+  async setHeartRateRainbowInPulse(enabled: boolean): Promise<void> {
+    if (!this.heartRateRainbowInPulseChar) {
+      throw new Error(
+        "This device firmware does not support rainbow within the pulse"
+      );
+    }
+
+    try {
+      const data = new Uint8Array([enabled ? 1 : 0]);
+      await this.heartRateRainbowInPulseChar.writeValue(data);
+    } catch (error) {
+      console.error("Failed to set heart rate rainbow-in-pulse option:", error);
+      throw new Error(
+        "Failed to set heart rate rainbow-in-pulse option on device"
+      );
+    }
+  }
+
+  supportsHeartRateRainbowInPulse(): boolean {
+    return this.heartRateRainbowInPulseChar !== null;
   }
 
   async setColor(r: number, g: number, b: number): Promise<void> {

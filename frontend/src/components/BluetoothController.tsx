@@ -27,6 +27,9 @@ export function BluetoothController() {
     heartRateRainbowCycle,
     setHeartRateRainbowCycle,
     supportsHeartRateRainbowCycle,
+    heartRateRainbowInPulse,
+    setHeartRateRainbowInPulse,
+    supportsHeartRateRainbowInPulse,
     isConnected,
   } = useBluetooth();
 
@@ -198,32 +201,56 @@ export function BluetoothController() {
                   className="text-sm text-muted-foreground"
                 >
                   {currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE
-                    ? "Solid pulse color (used when rainbow is off)"
+                    ? "Solid color (wave and dim LEDs, or dim only with rainbow-on-pulse)"
                     : `Select color for ${MODE_NAMES[currentMode].toLowerCase()} mode`}
                 </label>
               </div>
               {currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE && (
-                <div className="pt-3 border-t border-border space-y-2">
-                  {supportsHeartRateRainbowCycle ? (
-                    <label className="flex items-start gap-3 cursor-pointer text-sm">
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4 rounded border"
-                        checked={heartRateRainbowCycle}
-                        onChange={(e) => {
-                          setHeartRateRainbowCycle(e.target.checked).catch(
-                            console.error
-                          );
-                        }}
-                      />
-                      <span>
-                        Slowly cycle the pulse color through the rainbow
-                      </span>
-                    </label>
+                <div className="pt-3 border-t border-border space-y-3">
+                  {supportsHeartRateRainbowCycle ||
+                  supportsHeartRateRainbowInPulse ? (
+                    <>
+                      {supportsHeartRateRainbowCycle && (
+                        <label className="flex items-start gap-3 cursor-pointer text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border"
+                            checked={heartRateRainbowCycle}
+                            onChange={(e) => {
+                              setHeartRateRainbowCycle(e.target.checked).catch(
+                                console.error
+                              );
+                            }}
+                          />
+                          <span>
+                            Slowly shift hue for the whole strip (one color at
+                            a time)
+                          </span>
+                        </label>
+                      )}
+                      {supportsHeartRateRainbowInPulse && (
+                        <label className="flex items-start gap-3 cursor-pointer text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border"
+                            checked={heartRateRainbowInPulse}
+                            onChange={(e) => {
+                              setHeartRateRainbowInPulse(
+                                e.target.checked
+                              ).catch(console.error);
+                            }}
+                          />
+                          <span>
+                            Rainbow spectrum on each traveling pulse (scrolls
+                            with the heartbeat wave)
+                          </span>
+                        </label>
+                      )}
+                    </>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Install the latest firmware on the device to enable the
-                      rainbow color option.
+                      Install the latest firmware on the device to enable
+                      rainbow pulse options.
                     </p>
                   )}
                 </div>

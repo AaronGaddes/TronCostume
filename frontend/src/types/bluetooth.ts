@@ -5,6 +5,8 @@ export const MODE_STATUS_CHAR_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
 export const COLOR_CONTROL_CHAR_UUID = "19b10003-e8f2-537e-4f6c-d104768a1214";
 export const HEART_RATE_RAINBOW_CHAR_UUID =
   "19b10004-e8f2-537e-4f6c-d104768a1214";
+export const HEART_RATE_RAINBOW_IN_PULSE_CHAR_UUID =
+  "19b10005-e8f2-537e-4f6c-d104768a1214";
 
 // Device name
 export const DEVICE_NAME = "ESP32-LED-Controller";
@@ -41,6 +43,9 @@ export interface BluetoothService {
   getHeartRateRainbowCycle(): Promise<boolean>;
   setHeartRateRainbowCycle(enabled: boolean): Promise<void>;
   supportsHeartRateRainbowCycle(): boolean;
+  getHeartRateRainbowInPulse(): Promise<boolean>;
+  setHeartRateRainbowInPulse(enabled: boolean): Promise<void>;
+  supportsHeartRateRainbowInPulse(): boolean;
   isConnected(): boolean;
   getConnectionState(): ConnectionState;
   onConnectionStateChange(callback: (state: ConnectionState) => void): void;

@@ -17,6 +17,10 @@ export function useBluetooth() {
     useState(false);
   const [supportsHeartRateRainbowCycle, setSupportsHeartRateRainbowCycle] =
     useState(false);
+  const [heartRateRainbowInPulse, setHeartRateRainbowInPulseState] =
+    useState(false);
+  const [supportsHeartRateRainbowInPulse, setSupportsHeartRateRainbowInPulse] =
+    useState(false);
 
   useEffect(() => {
     // Subscribe to connection state changes
@@ -65,6 +69,16 @@ export function useBluetooth() {
       } else {
         setHeartRateRainbowCycleState(false);
       }
+
+      const supportsInPulse =
+        bluetoothService.supportsHeartRateRainbowInPulse();
+      setSupportsHeartRateRainbowInPulse(supportsInPulse);
+      if (supportsInPulse) {
+        const inPulse = await bluetoothService.getHeartRateRainbowInPulse();
+        setHeartRateRainbowInPulseState(inPulse);
+      } else {
+        setHeartRateRainbowInPulseState(false);
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to connect";
@@ -78,6 +92,8 @@ export function useBluetooth() {
     setError(null);
     setSupportsHeartRateRainbowCycle(false);
     setHeartRateRainbowCycleState(false);
+    setSupportsHeartRateRainbowInPulse(false);
+    setHeartRateRainbowInPulseState(false);
   }, []);
 
   const setMode = useCallback(async (mode: AnimationMode) => {
@@ -97,9 +113,32 @@ export function useBluetooth() {
       setError(null);
       await bluetoothService.setHeartRateRainbowCycle(enabled);
       setHeartRateRainbowCycleState(enabled);
+      if (enabled && bluetoothService.supportsHeartRateRainbowInPulse()) {
+        await bluetoothService.setHeartRateRainbowInPulse(false);
+        setHeartRateRainbowInPulseState(false);
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to set rainbow option";
+      setError(errorMessage);
+      throw err;
+    }
+  }, []);
+
+  const setHeartRateRainbowInPulse = useCallback(async (enabled: boolean) => {
+    try {
+      setError(null);
+      await bluetoothService.setHeartRateRainbowInPulse(enabled);
+      setHeartRateRainbowInPulseState(enabled);
+      if (enabled && bluetoothService.supportsHeartRateRainbowCycle()) {
+        await bluetoothService.setHeartRateRainbowCycle(false);
+        setHeartRateRainbowCycleState(false);
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Failed to set rainbow-in-pulse option";
       setError(errorMessage);
       throw err;
     }
@@ -128,6 +167,9 @@ export function useBluetooth() {
     heartRateRainbowCycle,
     setHeartRateRainbowCycle,
     supportsHeartRateRainbowCycle,
+    heartRateRainbowInPulse,
+    setHeartRateRainbowInPulse,
+    supportsHeartRateRainbowInPulse,
     isConnected: connectionState === "connected",
   };
 }

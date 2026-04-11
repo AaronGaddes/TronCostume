@@ -17,8 +17,8 @@ public:
   HeartRateAnimation(LEDController *ledController);
   ~HeartRateAnimation();
 
-  // Update animation based on current heart rate and user-selected pulse color
-  void update(uint16_t currentHeartRate, CRGB pulseColor);
+  // pulseColor: base/dim color. rainbowInPulse: spread+scroll rainbow across the bright wave
+  void update(uint16_t currentHeartRate, CRGB pulseColor, bool rainbowInPulse);
 
   // Reset animation state
   void reset();

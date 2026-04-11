@@ -28,6 +28,10 @@ public:
   void setHeartRateRainbowCycle(bool enabled);
   bool getHeartRateRainbowCycle() const { return m_heartRateRainbowCycle; }
 
+  // Heart rate pulse: rainbow spectrum on the traveling wave (mutually exclusive with global cycle in UI)
+  void setHeartRateRainbowInPulse(bool enabled);
+  bool getHeartRateRainbowInPulse() const { return m_heartRateRainbowInPulse; }
+
   // Update - call this in main loop
   void update(uint16_t currentHeartRate = 0);
 
@@ -43,6 +47,7 @@ private:
   bool m_initialized;
   CRGB m_solidColor; // Current solid color
   bool m_heartRateRainbowCycle;
+  bool m_heartRateRainbowInPulse;
 };
 
 #endif // ANIMATION_MANAGER_H

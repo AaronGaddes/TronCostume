@@ -23,7 +23,8 @@ HeartRateAnimation::~HeartRateAnimation()
 {
 }
 
-void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor)
+void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor,
+                                bool rainbowInPulse)
 {
   if (m_ledController == nullptr)
   {
@@ -71,8 +72,6 @@ void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor)
   }
   m_lastUpdateTime = currentTime;
 
-  CRGB baseColor = pulseColor;
-
   // Get LED count for wave calculation
   uint16_t ledCount = m_ledController->getLEDCount();
   CRGB *leds = m_ledController->getLEDs();
@@ -81,9 +80,6 @@ void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor)
   // Wave travels from start to end, synchronized with heart rate
   for (uint16_t i = 0; i < ledCount; i++)
   {
-    // Calculate position along the strip (0.0 = start, 1.0 = end)
-    float position = (float)i / (float)ledCount;
-
     // Calculate where the wave pulse is relative to this LED
     // m_pulsePhase goes from 0.0 to 1.0 as the wave travels down
     // Position of wave front: m_pulsePhase * ledCount (in LED units)
@@ -113,9 +109,22 @@ void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor)
                    (uint8_t)(bellCurve * (PULSE_MAX_BRIGHTNESS - PULSE_BASE_BRIGHTNESS));
     }
 
-    // Apply color with brightness
-    CRGB ledColor = baseColor;
-    ledColor.nscale8(brightness);
+    CRGB ledColor;
+    if (rainbowInPulse &&
+        normalizedDistance >= -1.0f && normalizedDistance <= 1.0f)
+    {
+      // Full spectrum across the pulse width, shifted as the wave travels (m_pulsePhase 0..1)
+      float t = (normalizedDistance + 1.0f) * 0.5f;
+      uint8_t hueAlong = (uint8_t)(t * 255.0f);
+      uint8_t hueScroll = (uint8_t)(m_pulsePhase * 255.0f);
+      ledColor = CHSV((uint8_t)(hueAlong + hueScroll), 255, 255);
+      ledColor.nscale8(brightness);
+    }
+    else
+    {
+      ledColor = pulseColor;
+      ledColor.nscale8(brightness);
+    }
     leds[i] = ledColor;
   }
 
