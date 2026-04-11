@@ -24,7 +24,8 @@ HeartRateAnimation::~HeartRateAnimation()
 }
 
 void HeartRateAnimation::update(uint16_t rateBpm, CRGB pulseColor,
-                                bool rainbowInPulse, bool fixedTempoMode)
+                                bool rainbowInPulse, bool fixedTempoMode,
+                                uint8_t beatsPerMeasure)
 {
   if (m_ledController == nullptr)
   {
@@ -39,7 +40,7 @@ void HeartRateAnimation::update(uint16_t rateBpm, CRGB pulseColor,
   {
     if (rateBpm > 0)
     {
-      avgHeartRate = constrain(rateBpm, MIN_TEMPO_BPM, MAX_TEMPO_EFFECTIVE_BPM);
+      avgHeartRate = constrain(rateBpm, MIN_TEMPO_BPM, MAX_TEMPO_BPM);
     }
   }
   else
@@ -69,9 +70,14 @@ void HeartRateAnimation::update(uint16_t rateBpm, CRGB pulseColor,
   unsigned long deltaTime = currentTime - m_lastUpdateTime;
   if (m_lastUpdateTime > 0 && deltaTime < 1000) // Prevent overflow
   {
-    // Convert heart rate to milliseconds per beat
-    float msPerBeat = 60000.0f / avgHeartRate;
-    float phaseIncrement = (deltaTime / msPerBeat) * pulseSpeed;
+    float msPerBeat = 60000.0f / (float)avgHeartRate;
+    float msForOneWaveCycle = msPerBeat;
+    if (fixedTempoMode && beatsPerMeasure > 1)
+    {
+      // One full strip traversal per measure (beatsPerMeasure quarter-note beats)
+      msForOneWaveCycle = msPerBeat * (float)beatsPerMeasure;
+    }
+    float phaseIncrement = (deltaTime / msForOneWaveCycle) * pulseSpeed;
     m_pulsePhase += phaseIncrement;
 
     // Wrap phase to 0-1 range
@@ -81,6 +87,19 @@ void HeartRateAnimation::update(uint16_t rateBpm, CRGB pulseColor,
     }
   }
   m_lastUpdateTime = currentTime;
+
+  const bool measureSubdivision =
+      fixedTempoMode && beatsPerMeasure > 1;
+
+  float beatBumpGlobal = 0.0f;
+  if (measureSubdivision)
+  {
+    float beatPhase = m_pulsePhase * (float)beatsPerMeasure;
+    float frac = beatPhase - floorf(beatPhase);
+    float distBeat = fminf(frac, 1.0f - frac);
+    float z = distBeat / TEMPO_BEAT_SIGMA;
+    beatBumpGlobal = (float)TEMPO_BEAT_BUMP_MAX * expf(-z * z);
+  }
 
   // Get LED count for wave calculation
   uint16_t ledCount = m_ledController->getLEDCount();
@@ -104,6 +123,13 @@ void HeartRateAnimation::update(uint16_t rateBpm, CRGB pulseColor,
     float pulseWidth = 8.0f; // Width of the pulse in LEDs
     float normalizedDistance = distanceFromWave / pulseWidth;
 
+    float localBell = 0.0f;
+    if (normalizedDistance >= -1.0f && normalizedDistance <= 1.0f)
+    {
+      localBell =
+          expf(-(normalizedDistance * normalizedDistance) / 2.0f);
+    }
+
     // Calculate brightness based on distance from wave front
     uint8_t brightness;
     if (normalizedDistance < -1.0f || normalizedDistance > 1.0f)
@@ -113,10 +139,31 @@ void HeartRateAnimation::update(uint16_t rateBpm, CRGB pulseColor,
     }
     else
     {
-      // Within pulse range, calculate brightness using bell curve
-      float bellCurve = exp(-(normalizedDistance * normalizedDistance) / 2.0f);
-      brightness = PULSE_BASE_BRIGHTNESS +
-                   (uint8_t)(bellCurve * (PULSE_MAX_BRIGHTNESS - PULSE_BASE_BRIGHTNESS));
+      float mainGain = measureSubdivision ? TEMPO_MAIN_BELL_GAIN : 1.0f;
+      float span = (float)(PULSE_MAX_BRIGHTNESS - PULSE_BASE_BRIGHTNESS);
+      int waveBright = (int)PULSE_BASE_BRIGHTNESS +
+                       (int)(localBell * span * mainGain);
+      if (waveBright > 255)
+      {
+        waveBright = 255;
+      }
+      brightness = (uint8_t)waveBright;
+    }
+
+    if (measureSubdivision)
+    {
+      // Stronger beat flash in dim regions; weaker under main wave crest
+      float beatScale = 1.0f - 0.72f * localBell;
+      if (beatScale < 0.12f)
+      {
+        beatScale = 0.12f;
+      }
+      int b = (int)brightness + (int)(beatBumpGlobal * beatScale);
+      if (b > 255)
+      {
+        b = 255;
+      }
+      brightness = (uint8_t)b;
     }
 
     CRGB ledColor;

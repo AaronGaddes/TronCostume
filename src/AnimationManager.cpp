@@ -4,6 +4,23 @@
 // Larger value = slower rainbow sweep for heart rate pulse (~82 ms per hue step ≈ 21 s per cycle)
 #define HR_RAINBOW_MS_PER_HUE_STEP 82
 
+static uint8_t beatsPerMeasureForTimeSignature(uint8_t sig)
+{
+  switch (sig)
+  {
+  case 0:
+    return 2; // 2/4
+  case 1:
+    return 3; // 3/4
+  case 2:
+    return 4; // 4/4
+  case 3:
+    return 2; // 6/8 compound (two beats per bar)
+  default:
+    return 4;
+  }
+}
+
 AnimationManager::AnimationManager(LEDController *ledController)
     : m_ledController(ledController),
       m_heartRateAnimation(nullptr),
@@ -14,7 +31,7 @@ AnimationManager::AnimationManager(LEDController *ledController)
       m_heartRateRainbowCycle(false),
       m_heartRateRainbowInPulse(false),
       m_tempoBpm(120),
-      m_tempoBeatMultiplier(1)
+      m_tempoTimeSignature(2)
 {
 }
 
@@ -192,23 +209,13 @@ void AnimationManager::update(uint16_t currentHeartRate)
     break;
 
   case MODE_HEART_RATE_PULSE:
-    updateSharedPulse(currentHeartRate, false);
+    updateSharedPulse(currentHeartRate, false, 1);
     break;
 
   case MODE_TEMPO_PULSE:
-  {
-    uint32_t eff = (uint32_t)m_tempoBpm * (uint32_t)m_tempoBeatMultiplier;
-    if (eff < MIN_TEMPO_BPM)
-    {
-      eff = MIN_TEMPO_BPM;
-    }
-    if (eff > MAX_TEMPO_EFFECTIVE_BPM)
-    {
-      eff = MAX_TEMPO_EFFECTIVE_BPM;
-    }
-    updateSharedPulse((uint16_t)eff, true);
+    updateSharedPulse(m_tempoBpm, true,
+                       beatsPerMeasureForTimeSignature(m_tempoTimeSignature));
     break;
-  }
 
   default:
     break;
@@ -264,7 +271,7 @@ void AnimationManager::setHeartRateRainbowInPulse(bool enabled)
   Serial.println(enabled ? "on" : "off");
 }
 
-void AnimationManager::setTempo(uint16_t bpm, uint8_t beatMultiplier)
+void AnimationManager::setTempo(uint16_t bpm, uint8_t timeSignature)
 {
   if (bpm < MIN_TEMPO_BPM)
   {
@@ -275,21 +282,22 @@ void AnimationManager::setTempo(uint16_t bpm, uint8_t beatMultiplier)
     bpm = MAX_TEMPO_BPM;
   }
 
-  if (beatMultiplier != 2 && beatMultiplier != 4)
+  if (timeSignature > 3)
   {
-    beatMultiplier = 1;
+    timeSignature = 2;
   }
 
   m_tempoBpm = bpm;
-  m_tempoBeatMultiplier = beatMultiplier;
+  m_tempoTimeSignature = timeSignature;
 
   Serial.print("Tempo ");
   Serial.print(bpm);
-  Serial.print(" BPM, multiplier ");
-  Serial.println(beatMultiplier);
+  Serial.print(" BPM, time sig index ");
+  Serial.println(timeSignature);
 }
 
-void AnimationManager::updateSharedPulse(uint16_t rateBpm, bool fixedTempo)
+void AnimationManager::updateSharedPulse(uint16_t rateBpm, bool fixedTempo,
+                                         uint8_t beatsPerMeasure)
 {
   if (m_heartRateAnimation == nullptr)
   {
@@ -303,7 +311,7 @@ void AnimationManager::updateSharedPulse(uint16_t rateBpm, bool fixedTempo)
     pulseColor = CHSV(hue, 255, 255);
   }
   m_heartRateAnimation->update(rateBpm, pulseColor, m_heartRateRainbowInPulse,
-                               fixedTempo);
+                               fixedTempo, beatsPerMeasure);
 }
 
 void AnimationManager::setSolidColor(uint32_t rgb)

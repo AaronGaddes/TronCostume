@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { useBluetooth } from "@/hooks/useBluetooth";
-import { type AnimationMode, ANIMATION_MODES, MODES } from "@/types/bluetooth";
+import {
+  type AnimationMode,
+  type TempoTimeSignature,
+  ANIMATION_MODES,
+  MODES,
+  TEMPO_TIME_SIGNATURE,
+} from "@/types/bluetooth";
 import { Button } from "@/components/ui/button";
 
 const MODE_NAMES: Record<AnimationMode, string> = {
@@ -32,7 +38,7 @@ export function BluetoothController() {
     setHeartRateRainbowInPulse,
     supportsHeartRateRainbowInPulse,
     tempoBpm,
-    tempoBeatMultiplier,
+    tempoTimeSignature,
     setTempo,
     supportsTempoControl,
     isConnected,
@@ -58,7 +64,7 @@ export function BluetoothController() {
     }
     v = Math.max(40, Math.min(240, v));
     setTempoBpmDraft(String(v));
-    setTempo(v, tempoBeatMultiplier).catch(console.error);
+    setTempo(v, tempoTimeSignature).catch(console.error);
   };
 
   const handleConnect = async () => {
@@ -225,7 +231,7 @@ export function BluetoothController() {
                       className="w-full sm:flex-1 min-w-0"
                       onChange={(e) => {
                         const v = Number(e.target.value);
-                        setTempo(v, tempoBeatMultiplier).catch(console.error);
+                        setTempo(v, tempoTimeSignature).catch(console.error);
                       }}
                     />
                     <div className="flex items-center gap-2 shrink-0">
@@ -256,24 +262,37 @@ export function BluetoothController() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="beatMul" className="text-sm font-medium block">
-                    Pulses per beat
+                  <label htmlFor="timeSig" className="text-sm font-medium block">
+                    Time signature
                   </label>
                   <select
-                    id="beatMul"
+                    id="timeSig"
                     className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                    value={tempoBeatMultiplier}
+                    value={tempoTimeSignature}
                     onChange={(e) => {
                       setTempo(
                         tempoBpm,
-                        Number(e.target.value)
+                        Number(e.target.value) as TempoTimeSignature
                       ).catch(console.error);
                     }}
                   >
-                    <option value={1}>1× (one wave per beat)</option>
-                    <option value={2}>2× (twice per beat)</option>
-                    <option value={4}>4× (four times per beat)</option>
+                    <option value={TEMPO_TIME_SIGNATURE.TWO_FOUR}>
+                      2/4 (two beats per measure)
+                    </option>
+                    <option value={TEMPO_TIME_SIGNATURE.THREE_FOUR}>
+                      3/4 (waltz)
+                    </option>
+                    <option value={TEMPO_TIME_SIGNATURE.FOUR_FOUR}>
+                      4/4 (common time)
+                    </option>
+                    <option value={TEMPO_TIME_SIGNATURE.SIX_EIGHT}>
+                      6/8 (two beats per bar, compound)
+                    </option>
                   </select>
+                  <p className="text-xs text-muted-foreground">
+                    Bright wave runs once per measure; softer flashes mark each
+                    beat in the bar.
+                  </p>
                 </div>
               </div>
             ) : (

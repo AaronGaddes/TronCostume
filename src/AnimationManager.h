@@ -32,10 +32,10 @@ public:
   void setHeartRateRainbowInPulse(bool enabled);
   bool getHeartRateRainbowInPulse() const { return m_heartRateRainbowInPulse; }
 
-  // Tempo pulse mode: BPM (40–240) and beat multiplier (1, 2, or 4)
-  void setTempo(uint16_t bpm, uint8_t beatMultiplier);
+  // Tempo pulse: BPM (40–240) and time signature index 0=2/4, 1=3/4, 2=4/4, 3=6/8 (2 beats)
+  void setTempo(uint16_t bpm, uint8_t timeSignature);
   uint16_t getTempoBpm() const { return m_tempoBpm; }
-  uint8_t getTempoBeatMultiplier() const { return m_tempoBeatMultiplier; }
+  uint8_t getTempoTimeSignature() const { return m_tempoTimeSignature; }
 
   // Update - call this in main loop
   void update(uint16_t currentHeartRate = 0);
@@ -44,7 +44,8 @@ public:
   void reset();
 
 private:
-  void updateSharedPulse(uint16_t rateBpm, bool fixedTempo);
+  void updateSharedPulse(uint16_t rateBpm, bool fixedTempo,
+                         uint8_t beatsPerMeasure);
 
   LEDController *m_ledController;
   HeartRateAnimation *m_heartRateAnimation;
@@ -57,7 +58,7 @@ private:
   bool m_heartRateRainbowInPulse;
 
   uint16_t m_tempoBpm;
-  uint8_t m_tempoBeatMultiplier; // 1, 2, or 4 (pulses per quarter at given BPM)
+  uint8_t m_tempoTimeSignature; // 0–3, wire format for BLE + UI
 };
 
 #endif // ANIMATION_MANAGER_H

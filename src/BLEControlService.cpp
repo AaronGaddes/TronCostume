@@ -179,13 +179,18 @@ void TempoControlCallbacks::onWrite(BLECharacteristic *pCharacteristic)
       (uint16_t)(uint8_t)value[0] | (((uint16_t)(uint8_t)value[1]) << 8);
   uint8_t mult = (uint8_t)value[2];
 
+  if (mult > 3)
+  {
+    mult = 2;
+  }
+
   m_animationManager->setTempo(bpm, mult);
 
   uint16_t outBpm = m_animationManager->getTempoBpm();
   uint8_t buf[3] = {
       (uint8_t)(outBpm & 0xFF),
       (uint8_t)(outBpm >> 8),
-      m_animationManager->getTempoBeatMultiplier(),
+      m_animationManager->getTempoTimeSignature(),
   };
   pCharacteristic->setValue(buf, 3);
 }
@@ -336,7 +341,7 @@ void BLEControlService::setupService()
         new TempoControlCallbacks(m_animationManager));
   }
 
-  uint8_t tempoInit[3] = {120, 0, 1}; // 120 BPM LE, multiplier 1
+  uint8_t tempoInit[3] = {120, 0, 2}; // 120 BPM LE, time sig 2 = 4/4
   m_pTempoControlChar->setValue(tempoInit, 3);
 
   // Start the service

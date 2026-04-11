@@ -9,7 +9,9 @@ import {
   TEMPO_CONTROL_CHAR_UUID,
   DEVICE_NAME,
   ANIMATION_MODES,
+  TEMPO_TIME_SIGNATURE,
   type AnimationMode,
+  type TempoTimeSignature,
   type ConnectionState,
   type BluetoothService,
 } from "@/types/bluetooth";
@@ -296,25 +298,26 @@ class BluetoothServiceImpl implements BluetoothService {
     return this.heartRateRainbowInPulseChar !== null;
   }
 
-  async getTempo(): Promise<{ bpm: number; beatMultiplier: number }> {
+  async getTempo(): Promise<{ bpm: number; timeSignature: TempoTimeSignature }> {
     if (!this.tempoControlChar) {
-      return { bpm: 120, beatMultiplier: 1 };
+      return { bpm: 120, timeSignature: TEMPO_TIME_SIGNATURE.FOUR_FOUR };
     }
 
     try {
       const value = await this.tempoControlChar.readValue();
       const bpm = value.getUint16(0, true);
-      const raw = value.getUint8(2);
-      const beatMultiplier =
-        raw === 2 || raw === 4 ? raw : 1;
-      return { bpm, beatMultiplier };
+      let raw = value.getUint8(2);
+      if (raw > 3) {
+        raw = TEMPO_TIME_SIGNATURE.FOUR_FOUR;
+      }
+      return { bpm, timeSignature: raw as TempoTimeSignature };
     } catch (error) {
       console.error("Failed to read tempo from device:", error);
       throw new Error("Failed to read tempo from device");
     }
   }
 
-  async setTempo(bpm: number, beatMultiplier: number): Promise<void> {
+  async setTempo(bpm: number, timeSignature: TempoTimeSignature): Promise<void> {
     if (!this.tempoControlChar) {
       throw new Error(
         "This device firmware does not support tempo control (update firmware)"
@@ -322,10 +325,13 @@ class BluetoothServiceImpl implements BluetoothService {
     }
 
     const b = Math.max(40, Math.min(240, Math.round(bpm)));
-    const m = beatMultiplier === 2 || beatMultiplier === 4 ? beatMultiplier : 1;
+    let sig = timeSignature;
+    if (sig < 0 || sig > 3) {
+      sig = TEMPO_TIME_SIGNATURE.FOUR_FOUR;
+    }
 
     try {
-      const data = new Uint8Array([b & 0xff, (b >> 8) & 0xff, m]);
+      const data = new Uint8Array([b & 0xff, (b >> 8) & 0xff, sig]);
       await this.tempoControlChar.writeValue(data);
     } catch (error) {
       console.error("Failed to set tempo:", error);

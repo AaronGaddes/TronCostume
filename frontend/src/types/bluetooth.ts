@@ -28,6 +28,17 @@ export const ANIMATION_MODES = {
 };
 export type AnimationMode =
   (typeof ANIMATION_MODES)[keyof typeof ANIMATION_MODES];
+
+/** Byte 2 of tempo BLE characteristic (must match firmware) */
+export const TEMPO_TIME_SIGNATURE = {
+  TWO_FOUR: 0,
+  THREE_FOUR: 1,
+  FOUR_FOUR: 2,
+  SIX_EIGHT: 3,
+} as const;
+export type TempoTimeSignature =
+  (typeof TEMPO_TIME_SIGNATURE)[keyof typeof TEMPO_TIME_SIGNATURE];
+
 /** Ordered list for mode buttons */
 export const MODES: AnimationMode[] = [
   ANIMATION_MODES.MODE_OFF,
@@ -61,8 +72,8 @@ export interface BluetoothService {
   getHeartRateRainbowInPulse(): Promise<boolean>;
   setHeartRateRainbowInPulse(enabled: boolean): Promise<void>;
   supportsHeartRateRainbowInPulse(): boolean;
-  getTempo(): Promise<{ bpm: number; beatMultiplier: number }>;
-  setTempo(bpm: number, beatMultiplier: number): Promise<void>;
+  getTempo(): Promise<{ bpm: number; timeSignature: TempoTimeSignature }>;
+  setTempo(bpm: number, timeSignature: TempoTimeSignature): Promise<void>;
   supportsTempoControl(): boolean;
   isConnected(): boolean;
   getConnectionState(): ConnectionState;

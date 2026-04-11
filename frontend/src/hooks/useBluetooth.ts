@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { bluetoothService } from "@/services/bluetoothService";
 import {
   ANIMATION_MODES,
+  TEMPO_TIME_SIGNATURE,
   type AnimationMode,
   type ConnectionState,
+  type TempoTimeSignature,
 } from "@/types/bluetooth";
 
 export function useBluetooth() {
@@ -22,7 +24,8 @@ export function useBluetooth() {
   const [supportsHeartRateRainbowInPulse, setSupportsHeartRateRainbowInPulse] =
     useState(false);
   const [tempoBpm, setTempoBpmState] = useState(120);
-  const [tempoBeatMultiplier, setTempoBeatMultiplierState] = useState(1);
+  const [tempoTimeSignature, setTempoTimeSignatureState] =
+    useState<TempoTimeSignature>(TEMPO_TIME_SIGNATURE.FOUR_FOUR);
   const [supportsTempoControl, setSupportsTempoControl] = useState(false);
 
   useEffect(() => {
@@ -88,10 +91,10 @@ export function useBluetooth() {
       if (supportsTempo) {
         const tempo = await bluetoothService.getTempo();
         setTempoBpmState(tempo.bpm);
-        setTempoBeatMultiplierState(tempo.beatMultiplier);
+        setTempoTimeSignatureState(tempo.timeSignature);
       } else {
         setTempoBpmState(120);
-        setTempoBeatMultiplierState(1);
+        setTempoTimeSignatureState(TEMPO_TIME_SIGNATURE.FOUR_FOUR);
       }
     } catch (err) {
       const errorMessage =
@@ -110,7 +113,7 @@ export function useBluetooth() {
     setHeartRateRainbowInPulseState(false);
     setSupportsTempoControl(false);
     setTempoBpmState(120);
-    setTempoBeatMultiplierState(1);
+    setTempoTimeSignatureState(TEMPO_TIME_SIGNATURE.FOUR_FOUR);
   }, []);
 
   const setMode = useCallback(async (mode: AnimationMode) => {
@@ -161,21 +164,26 @@ export function useBluetooth() {
     }
   }, []);
 
-  const setTempo = useCallback(async (bpm: number, beatMultiplier: number) => {
+  const setTempo = useCallback(
+    async (bpm: number, timeSignature: TempoTimeSignature) => {
     try {
       setError(null);
-      await bluetoothService.setTempo(bpm, beatMultiplier);
+      await bluetoothService.setTempo(bpm, timeSignature);
       setTempoBpmState(Math.max(40, Math.min(240, Math.round(bpm))));
-      setTempoBeatMultiplierState(
-        beatMultiplier === 2 || beatMultiplier === 4 ? beatMultiplier : 1
-      );
+      let sig = timeSignature;
+      if (sig < 0 || sig > 3) {
+        sig = TEMPO_TIME_SIGNATURE.FOUR_FOUR;
+      }
+      setTempoTimeSignatureState(sig);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to set tempo";
       setError(errorMessage);
       throw err;
     }
-  }, []);
+    },
+    []
+  );
 
   const setColor = useCallback(async (r: number, g: number, b: number) => {
     try {
@@ -204,7 +212,7 @@ export function useBluetooth() {
     setHeartRateRainbowInPulse,
     supportsHeartRateRainbowInPulse,
     tempoBpm,
-    tempoBeatMultiplier,
+    tempoTimeSignature,
     setTempo,
     supportsTempoControl,
     isConnected: connectionState === "connected",
