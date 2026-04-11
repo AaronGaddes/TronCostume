@@ -23,7 +23,7 @@ HeartRateAnimation::~HeartRateAnimation()
 {
 }
 
-void HeartRateAnimation::update(uint16_t currentHeartRate)
+void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor)
 {
   if (m_ledController == nullptr)
   {
@@ -43,8 +43,10 @@ void HeartRateAnimation::update(uint16_t currentHeartRate)
 
   if (avgHeartRate == 0)
   {
-    // No valid heart rate data yet, show dim red
-    m_ledController->fill(CRGB(20, 0, 0));
+    // No valid heart rate data yet, show dim version of selected color
+    CRGB dim = pulseColor;
+    dim.nscale8(30);
+    m_ledController->fill(dim);
     m_ledController->show();
     return;
   }
@@ -69,8 +71,7 @@ void HeartRateAnimation::update(uint16_t currentHeartRate)
   }
   m_lastUpdateTime = currentTime;
 
-  // Get heart rate color (red)
-  CRGB baseColor = getHeartRateColor();
+  CRGB baseColor = pulseColor;
 
   // Get LED count for wave calculation
   uint16_t ledCount = m_ledController->getLEDCount();
@@ -220,10 +221,4 @@ uint8_t HeartRateAnimation::calculateWaveBrightness(float phase) const
                        (uint8_t)(bellCurve * (PULSE_MAX_BRIGHTNESS - PULSE_BASE_BRIGHTNESS));
 
   return brightness;
-}
-
-CRGB HeartRateAnimation::getHeartRateColor() const
-{
-  // Red color for heart rate
-  return CRGB(255, 0, 0);
 }

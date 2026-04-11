@@ -1,13 +1,17 @@
 #include "AnimationManager.h"
 #include <Arduino.h>
 
+// Larger value = slower rainbow sweep for heart rate pulse (~82 ms per hue step ≈ 21 s per cycle)
+#define HR_RAINBOW_MS_PER_HUE_STEP 82
+
 AnimationManager::AnimationManager(LEDController *ledController)
     : m_ledController(ledController),
       m_heartRateAnimation(nullptr),
       m_standaloneAnimations(nullptr),
       m_currentMode(MODE_OFF),
       m_initialized(false),
-      m_solidColor(CRGB::White) // Default to white
+      m_solidColor(CRGB::White), // Default to white
+      m_heartRateRainbowCycle(false)
 {
 }
 
@@ -186,7 +190,13 @@ void AnimationManager::update(uint16_t currentHeartRate)
   case MODE_HEART_RATE_PULSE:
     if (m_heartRateAnimation != nullptr)
     {
-      m_heartRateAnimation->update(currentHeartRate);
+      CRGB pulseColor = m_solidColor;
+      if (m_heartRateRainbowCycle)
+      {
+        uint8_t hue = (uint8_t)((millis() / HR_RAINBOW_MS_PER_HUE_STEP) & 0xFF);
+        pulseColor = CHSV(hue, 255, 255);
+      }
+      m_heartRateAnimation->update(currentHeartRate, pulseColor);
     }
     break;
 
@@ -228,6 +238,13 @@ void AnimationManager::setSolidColor(uint8_t r, uint8_t g, uint8_t b)
   Serial.print(", ");
   Serial.print(b);
   Serial.println(")");
+}
+
+void AnimationManager::setHeartRateRainbowCycle(bool enabled)
+{
+  m_heartRateRainbowCycle = enabled;
+  Serial.print("BLE: Heart rate rainbow cycle ");
+  Serial.println(enabled ? "on" : "off");
 }
 
 void AnimationManager::setSolidColor(uint32_t rgb)

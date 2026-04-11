@@ -17,8 +17,8 @@ public:
   HeartRateAnimation(LEDController *ledController);
   ~HeartRateAnimation();
 
-  // Update animation based on current heart rate
-  void update(uint16_t currentHeartRate);
+  // Update animation based on current heart rate and user-selected pulse color
+  void update(uint16_t currentHeartRate, CRGB pulseColor);
 
   // Reset animation state
   void reset();
@@ -41,7 +41,6 @@ private:
   float calculatePulseSpeed(uint16_t avgHeartRate) const;
   uint8_t calculateBrightness(float phase, float speed) const;
   uint8_t calculateWaveBrightness(float phase) const;
-  CRGB getHeartRateColor() const;
 };
 
 #endif // HEART_RATE_ANIMATION_H

@@ -13,6 +13,7 @@
 #define MODE_CONTROL_CHAR_UUID "19B10001-E8F2-537E-4F6C-D104768A1214"
 #define MODE_STATUS_CHAR_UUID "19B10002-E8F2-537E-4F6C-D104768A1214"
 #define COLOR_CONTROL_CHAR_UUID "19B10003-E8F2-537E-4F6C-D104768A1214"
+#define HEART_RATE_RAINBOW_CHAR_UUID "19B10004-E8F2-537E-4F6C-D104768A1214"
 
 // Forward declaration
 class AnimationManager;
@@ -34,6 +35,17 @@ class ColorControlCallbacks : public BLECharacteristicCallbacks
 {
 public:
   ColorControlCallbacks(AnimationManager *animationManager);
+  void onWrite(BLECharacteristic *pCharacteristic) override;
+
+private:
+  AnimationManager *m_animationManager;
+};
+
+// Heart rate pulse: enable/disable slow rainbow hue cycle (1 byte: 0 = off, non-zero = on)
+class HeartRateRainbowCallbacks : public BLECharacteristicCallbacks
+{
+public:
+  explicit HeartRateRainbowCallbacks(AnimationManager *animationManager);
   void onWrite(BLECharacteristic *pCharacteristic) override;
 
 private:
@@ -82,6 +94,7 @@ private:
   BLECharacteristic *m_pModeControlChar;
   BLECharacteristic *m_pModeStatusChar;
   BLECharacteristic *m_pColorControlChar;
+  BLECharacteristic *m_pHeartRateRainbowChar;
 
   bool m_initialized;
   bool m_deviceConnected;

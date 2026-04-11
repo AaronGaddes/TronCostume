@@ -20,9 +20,13 @@ public:
   AnimationMode getCurrentMode() const { return m_currentMode; }
   bool requiresHeartRate() const;
 
-  // Color management (for solid mode)
+  // Color from BLE / frontend (solid, breathing, chase, twinkle, heart rate pulse)
   void setSolidColor(uint8_t r, uint8_t g, uint8_t b);
   void setSolidColor(uint32_t rgb); // RGB packed as 0xRRGGBB
+
+  // Heart rate pulse: cycle hue through the rainbow instead of solid color
+  void setHeartRateRainbowCycle(bool enabled);
+  bool getHeartRateRainbowCycle() const { return m_heartRateRainbowCycle; }
 
   // Update - call this in main loop
   void update(uint16_t currentHeartRate = 0);
@@ -38,6 +42,7 @@ private:
   AnimationMode m_currentMode;
   bool m_initialized;
   CRGB m_solidColor; // Current solid color
+  bool m_heartRateRainbowCycle;
 };
 
 #endif // ANIMATION_MANAGER_H

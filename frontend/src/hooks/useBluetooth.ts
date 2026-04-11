@@ -13,6 +13,10 @@ export function useBluetooth() {
     ANIMATION_MODES.MODE_OFF
   );
   const [error, setError] = useState<string | null>(null);
+  const [heartRateRainbowCycle, setHeartRateRainbowCycleState] =
+    useState(false);
+  const [supportsHeartRateRainbowCycle, setSupportsHeartRateRainbowCycle] =
+    useState(false);
 
   useEffect(() => {
     // Subscribe to connection state changes
@@ -51,6 +55,16 @@ export function useBluetooth() {
       // Read current mode after connection
       const mode = await bluetoothService.getCurrentMode();
       setCurrentMode(mode);
+
+      const supportsRainbow =
+        bluetoothService.supportsHeartRateRainbowCycle();
+      setSupportsHeartRateRainbowCycle(supportsRainbow);
+      if (supportsRainbow) {
+        const rainbow = await bluetoothService.getHeartRateRainbowCycle();
+        setHeartRateRainbowCycleState(rainbow);
+      } else {
+        setHeartRateRainbowCycleState(false);
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to connect";
@@ -62,6 +76,8 @@ export function useBluetooth() {
   const disconnect = useCallback(() => {
     bluetoothService.disconnect();
     setError(null);
+    setSupportsHeartRateRainbowCycle(false);
+    setHeartRateRainbowCycleState(false);
   }, []);
 
   const setMode = useCallback(async (mode: AnimationMode) => {
@@ -71,6 +87,19 @@ export function useBluetooth() {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to set mode";
+      setError(errorMessage);
+      throw err;
+    }
+  }, []);
+
+  const setHeartRateRainbowCycle = useCallback(async (enabled: boolean) => {
+    try {
+      setError(null);
+      await bluetoothService.setHeartRateRainbowCycle(enabled);
+      setHeartRateRainbowCycleState(enabled);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to set rainbow option";
       setError(errorMessage);
       throw err;
     }
@@ -96,6 +125,9 @@ export function useBluetooth() {
     disconnect,
     setMode,
     setColor,
+    heartRateRainbowCycle,
+    setHeartRateRainbowCycle,
+    supportsHeartRateRainbowCycle,
     isConnected: connectionState === "connected",
   };
 }

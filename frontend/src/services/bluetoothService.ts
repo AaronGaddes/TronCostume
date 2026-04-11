@@ -4,6 +4,7 @@ import {
   MODE_CONTROL_CHAR_UUID,
   MODE_STATUS_CHAR_UUID,
   COLOR_CONTROL_CHAR_UUID,
+  HEART_RATE_RAINBOW_CHAR_UUID,
   DEVICE_NAME,
   ANIMATION_MODES,
   type AnimationMode,
@@ -18,6 +19,7 @@ class BluetoothServiceImpl implements BluetoothService {
   private modeControlChar: BluetoothRemoteGATTCharacteristic | null = null;
   private modeStatusChar: BluetoothRemoteGATTCharacteristic | null = null;
   private colorControlChar: BluetoothRemoteGATTCharacteristic | null = null;
+  private heartRateRainbowChar: BluetoothRemoteGATTCharacteristic | null = null;
   private connectionState: ConnectionState = "disconnected";
   private connectionStateCallbacks: ((state: ConnectionState) => void)[] = [];
   private modeChangeCallbacks: ((mode: AnimationMode) => void)[] = [];
@@ -98,6 +100,17 @@ class BluetoothServiceImpl implements BluetoothService {
         COLOR_CONTROL_CHAR_UUID
       );
 
+      try {
+        this.heartRateRainbowChar = await this.service.getCharacteristic(
+          HEART_RATE_RAINBOW_CHAR_UUID
+        );
+      } catch {
+        this.heartRateRainbowChar = null;
+        console.warn(
+          "Heart rate rainbow characteristic unavailable (update device firmware?)"
+        );
+      }
+
       // Subscribe to mode status notifications
       await this.modeStatusChar.startNotifications();
       this.modeStatusChar.addEventListener(
@@ -152,6 +165,7 @@ class BluetoothServiceImpl implements BluetoothService {
     this.modeControlChar = null;
     this.modeStatusChar = null;
     this.colorControlChar = null;
+    this.heartRateRainbowChar = null;
   }
 
   async setMode(mode: AnimationMode): Promise<void> {
@@ -179,6 +193,40 @@ class BluetoothServiceImpl implements BluetoothService {
 
     await this.readCurrentMode();
     return this.currentMode;
+  }
+
+  async getHeartRateRainbowCycle(): Promise<boolean> {
+    if (!this.heartRateRainbowChar) {
+      return false;
+    }
+
+    try {
+      const value = await this.heartRateRainbowChar.readValue();
+      return value.getUint8(0) !== 0;
+    } catch (error) {
+      console.error("Failed to read heart rate rainbow option:", error);
+      throw new Error("Failed to read heart rate rainbow option from device");
+    }
+  }
+
+  async setHeartRateRainbowCycle(enabled: boolean): Promise<void> {
+    if (!this.heartRateRainbowChar) {
+      throw new Error(
+        "This device firmware does not support heart rate rainbow mode"
+      );
+    }
+
+    try {
+      const data = new Uint8Array([enabled ? 1 : 0]);
+      await this.heartRateRainbowChar.writeValue(data);
+    } catch (error) {
+      console.error("Failed to set heart rate rainbow option:", error);
+      throw new Error("Failed to set heart rate rainbow option on device");
+    }
+  }
+
+  supportsHeartRateRainbowCycle(): boolean {
+    return this.heartRateRainbowChar !== null;
   }
 
   async setColor(r: number, g: number, b: number): Promise<void> {

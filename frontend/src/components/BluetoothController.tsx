@@ -24,6 +24,9 @@ export function BluetoothController() {
     disconnect,
     setMode,
     setColor,
+    heartRateRainbowCycle,
+    setHeartRateRainbowCycle,
+    supportsHeartRateRainbowCycle,
     isConnected,
   } = useBluetooth();
 
@@ -173,7 +176,8 @@ export function BluetoothController() {
           (currentMode === ANIMATION_MODES.MODE_SOLID ||
             currentMode === ANIMATION_MODES.MODE_BREATHING ||
             currentMode === ANIMATION_MODES.MODE_CHASE ||
-            currentMode === ANIMATION_MODES.MODE_TWINKLE) && (
+            currentMode === ANIMATION_MODES.MODE_TWINKLE ||
+            currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE) && (
             <div className="border rounded-lg p-4 space-y-4">
               <h2 className="text-lg font-semibold">Color</h2>
               <div className="flex items-center gap-4">
@@ -193,9 +197,37 @@ export function BluetoothController() {
                   htmlFor="colorPicker"
                   className="text-sm text-muted-foreground"
                 >
-                  Select color for {MODE_NAMES[currentMode].toLowerCase()} mode
+                  {currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE
+                    ? "Solid pulse color (used when rainbow is off)"
+                    : `Select color for ${MODE_NAMES[currentMode].toLowerCase()} mode`}
                 </label>
               </div>
+              {currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE && (
+                <div className="pt-3 border-t border-border space-y-2">
+                  {supportsHeartRateRainbowCycle ? (
+                    <label className="flex items-start gap-3 cursor-pointer text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 rounded border"
+                        checked={heartRateRainbowCycle}
+                        onChange={(e) => {
+                          setHeartRateRainbowCycle(e.target.checked).catch(
+                            console.error
+                          );
+                        }}
+                      />
+                      <span>
+                        Slowly cycle the pulse color through the rainbow
+                      </span>
+                    </label>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Install the latest firmware on the device to enable the
+                      rainbow color option.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
