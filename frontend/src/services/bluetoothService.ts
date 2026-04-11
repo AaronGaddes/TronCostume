@@ -6,6 +6,7 @@ import {
   COLOR_CONTROL_CHAR_UUID,
   HEART_RATE_RAINBOW_CHAR_UUID,
   HEART_RATE_RAINBOW_IN_PULSE_CHAR_UUID,
+  TEMPO_CONTROL_CHAR_UUID,
   DEVICE_NAME,
   ANIMATION_MODES,
   type AnimationMode,
@@ -23,6 +24,7 @@ class BluetoothServiceImpl implements BluetoothService {
   private heartRateRainbowChar: BluetoothRemoteGATTCharacteristic | null = null;
   private heartRateRainbowInPulseChar: BluetoothRemoteGATTCharacteristic | null =
     null;
+  private tempoControlChar: BluetoothRemoteGATTCharacteristic | null = null;
   private connectionState: ConnectionState = "disconnected";
   private connectionStateCallbacks: ((state: ConnectionState) => void)[] = [];
   private modeChangeCallbacks: ((mode: AnimationMode) => void)[] = [];
@@ -125,6 +127,17 @@ class BluetoothServiceImpl implements BluetoothService {
         );
       }
 
+      try {
+        this.tempoControlChar = await this.service.getCharacteristic(
+          TEMPO_CONTROL_CHAR_UUID
+        );
+      } catch {
+        this.tempoControlChar = null;
+        console.warn(
+          "Tempo control characteristic unavailable (update device firmware?)"
+        );
+      }
+
       // Subscribe to mode status notifications
       await this.modeStatusChar.startNotifications();
       this.modeStatusChar.addEventListener(
@@ -181,6 +194,7 @@ class BluetoothServiceImpl implements BluetoothService {
     this.colorControlChar = null;
     this.heartRateRainbowChar = null;
     this.heartRateRainbowInPulseChar = null;
+    this.tempoControlChar = null;
   }
 
   async setMode(mode: AnimationMode): Promise<void> {
@@ -188,7 +202,7 @@ class BluetoothServiceImpl implements BluetoothService {
       throw new Error("Not connected to device");
     }
 
-    if (mode < 0 || mode > 8) {
+    if (mode < 0 || mode > ANIMATION_MODES.MODE_TEMPO_PULSE) {
       throw new Error(`Invalid mode: ${mode}`);
     }
 
@@ -282,6 +296,47 @@ class BluetoothServiceImpl implements BluetoothService {
     return this.heartRateRainbowInPulseChar !== null;
   }
 
+  async getTempo(): Promise<{ bpm: number; beatMultiplier: number }> {
+    if (!this.tempoControlChar) {
+      return { bpm: 120, beatMultiplier: 1 };
+    }
+
+    try {
+      const value = await this.tempoControlChar.readValue();
+      const bpm = value.getUint16(0, true);
+      const raw = value.getUint8(2);
+      const beatMultiplier =
+        raw === 2 || raw === 4 ? raw : 1;
+      return { bpm, beatMultiplier };
+    } catch (error) {
+      console.error("Failed to read tempo from device:", error);
+      throw new Error("Failed to read tempo from device");
+    }
+  }
+
+  async setTempo(bpm: number, beatMultiplier: number): Promise<void> {
+    if (!this.tempoControlChar) {
+      throw new Error(
+        "This device firmware does not support tempo control (update firmware)"
+      );
+    }
+
+    const b = Math.max(40, Math.min(240, Math.round(bpm)));
+    const m = beatMultiplier === 2 || beatMultiplier === 4 ? beatMultiplier : 1;
+
+    try {
+      const data = new Uint8Array([b & 0xff, (b >> 8) & 0xff, m]);
+      await this.tempoControlChar.writeValue(data);
+    } catch (error) {
+      console.error("Failed to set tempo:", error);
+      throw new Error("Failed to set tempo on device");
+    }
+  }
+
+  supportsTempoControl(): boolean {
+    return this.tempoControlChar !== null;
+  }
+
   async setColor(r: number, g: number, b: number): Promise<void> {
     if (!this.colorControlChar) {
       throw new Error("Not connected to device");
@@ -308,7 +363,7 @@ class BluetoothServiceImpl implements BluetoothService {
     try {
       const value = await this.modeStatusChar.readValue();
       const mode = value.getUint8(0);
-      if (mode >= 0 && mode <= 8) {
+      if (mode >= 0 && mode <= ANIMATION_MODES.MODE_TEMPO_PULSE) {
         this.currentMode = mode as AnimationMode;
         this.modeChangeCallbacks.forEach((callback) =>
           callback(this.currentMode)
@@ -324,7 +379,7 @@ class BluetoothServiceImpl implements BluetoothService {
     const value = characteristic.value;
     if (value) {
       const mode = value.getUint8(0);
-      if (mode >= 0 && mode <= 8) {
+      if (mode >= 0 && mode <= ANIMATION_MODES.MODE_TEMPO_PULSE) {
         this.currentMode = mode as AnimationMode;
         this.modeChangeCallbacks.forEach((callback) =>
           callback(this.currentMode)

@@ -155,6 +155,41 @@ void HeartRateRainbowInPulseCallbacks::onWrite(BLECharacteristic *pCharacteristi
   pCharacteristic->setValue(&stored, 1);
 }
 
+TempoControlCallbacks::TempoControlCallbacks(AnimationManager *animationManager)
+    : m_animationManager(animationManager)
+{
+}
+
+void TempoControlCallbacks::onWrite(BLECharacteristic *pCharacteristic)
+{
+  if (m_animationManager == nullptr || pCharacteristic == nullptr)
+  {
+    return;
+  }
+
+  std::string value = pCharacteristic->getValue();
+  if (value.length() != 3)
+  {
+    Serial.print("BLE: Invalid tempo data length: ");
+    Serial.println(value.length());
+    return;
+  }
+
+  uint16_t bpm =
+      (uint16_t)(uint8_t)value[0] | (((uint16_t)(uint8_t)value[1]) << 8);
+  uint8_t mult = (uint8_t)value[2];
+
+  m_animationManager->setTempo(bpm, mult);
+
+  uint16_t outBpm = m_animationManager->getTempoBpm();
+  uint8_t buf[3] = {
+      (uint8_t)(outBpm & 0xFF),
+      (uint8_t)(outBpm >> 8),
+      m_animationManager->getTempoBeatMultiplier(),
+  };
+  pCharacteristic->setValue(buf, 3);
+}
+
 // BLEControlService implementation
 BLEControlService::BLEControlService()
     : BLEControlService(nullptr)
@@ -169,6 +204,7 @@ BLEControlService::BLEControlService(AnimationManager *animationManager)
       m_pColorControlChar(nullptr),
       m_pHeartRateRainbowChar(nullptr),
       m_pHeartRateRainbowInPulseChar(nullptr),
+      m_pTempoControlChar(nullptr),
       m_initialized(false),
       m_deviceConnected(false),
       m_oldDeviceConnected(false),
@@ -289,6 +325,19 @@ void BLEControlService::setupService()
 
   uint8_t inPulseOff = 0;
   m_pHeartRateRainbowInPulseChar->setValue(&inPulseOff, 1);
+
+  m_pTempoControlChar = m_pService->createCharacteristic(
+      TEMPO_CONTROL_CHAR_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+
+  if (m_animationManager != nullptr)
+  {
+    m_pTempoControlChar->setCallbacks(
+        new TempoControlCallbacks(m_animationManager));
+  }
+
+  uint8_t tempoInit[3] = {120, 0, 1}; // 120 BPM LE, multiplier 1
+  m_pTempoControlChar->setValue(tempoInit, 3);
 
   // Start the service
   m_pService->start();

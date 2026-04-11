@@ -7,6 +7,8 @@ export const HEART_RATE_RAINBOW_CHAR_UUID =
   "19b10004-e8f2-537e-4f6c-d104768a1214";
 export const HEART_RATE_RAINBOW_IN_PULSE_CHAR_UUID =
   "19b10005-e8f2-537e-4f6c-d104768a1214";
+export const TEMPO_CONTROL_CHAR_UUID =
+  "19b10006-e8f2-537e-4f6c-d104768a1214";
 
 // Device name
 export const DEVICE_NAME = "ESP32-LED-Controller";
@@ -22,10 +24,23 @@ export const ANIMATION_MODES = {
   MODE_FIRE: 6,
   MODE_COLOR_WAVE: 7,
   MODE_HEART_RATE_PULSE: 8,
+  MODE_TEMPO_PULSE: 9,
 };
 export type AnimationMode =
   (typeof ANIMATION_MODES)[keyof typeof ANIMATION_MODES];
-export const MODES = Object.values(ANIMATION_MODES);
+/** Ordered list for mode buttons */
+export const MODES: AnimationMode[] = [
+  ANIMATION_MODES.MODE_OFF,
+  ANIMATION_MODES.MODE_SOLID,
+  ANIMATION_MODES.MODE_RAINBOW,
+  ANIMATION_MODES.MODE_BREATHING,
+  ANIMATION_MODES.MODE_CHASE,
+  ANIMATION_MODES.MODE_TWINKLE,
+  ANIMATION_MODES.MODE_FIRE,
+  ANIMATION_MODES.MODE_COLOR_WAVE,
+  ANIMATION_MODES.MODE_HEART_RATE_PULSE,
+  ANIMATION_MODES.MODE_TEMPO_PULSE,
+];
 // Connection state
 export type ConnectionState =
   | "disconnected"
@@ -46,6 +61,9 @@ export interface BluetoothService {
   getHeartRateRainbowInPulse(): Promise<boolean>;
   setHeartRateRainbowInPulse(enabled: boolean): Promise<void>;
   supportsHeartRateRainbowInPulse(): boolean;
+  getTempo(): Promise<{ bpm: number; beatMultiplier: number }>;
+  setTempo(bpm: number, beatMultiplier: number): Promise<void>;
+  supportsTempoControl(): boolean;
   isConnected(): boolean;
   getConnectionState(): ConnectionState;
   onConnectionStateChange(callback: (state: ConnectionState) => void): void;

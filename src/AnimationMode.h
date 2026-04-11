@@ -12,7 +12,8 @@ enum AnimationMode
   MODE_FIRE,
   MODE_COLOR_WAVE,
   MODE_HEART_RATE_PULSE,
-  MODE_COUNT // Total number of modes
+  MODE_TEMPO_PULSE, // Same pulse visuals as heart rate; BPM from UI / BLE, not HR sensor
+  MODE_COUNT        // Total number of modes
 };
 
 // Check if a mode requires BLE/heart rate data

@@ -23,8 +23,8 @@ HeartRateAnimation::~HeartRateAnimation()
 {
 }
 
-void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor,
-                                bool rainbowInPulse)
+void HeartRateAnimation::update(uint16_t rateBpm, CRGB pulseColor,
+                                bool rainbowInPulse, bool fixedTempoMode)
 {
   if (m_ledController == nullptr)
   {
@@ -33,18 +33,27 @@ void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor,
 
   unsigned long currentTime = millis();
 
-  // Add new heart rate sample to rolling average
-  if (currentHeartRate > 0)
-  {
-    addHeartRateSample(currentHeartRate);
-  }
+  uint16_t avgHeartRate = 0;
 
-  // Get averaged heart rate
-  uint16_t avgHeartRate = getAverageHeartRate();
+  if (fixedTempoMode)
+  {
+    if (rateBpm > 0)
+    {
+      avgHeartRate = constrain(rateBpm, MIN_TEMPO_BPM, MAX_TEMPO_EFFECTIVE_BPM);
+    }
+  }
+  else
+  {
+    if (rateBpm > 0)
+    {
+      addHeartRateSample(rateBpm);
+    }
+    avgHeartRate = getAverageHeartRate();
+  }
 
   if (avgHeartRate == 0)
   {
-    // No valid heart rate data yet, show dim version of selected color
+    // No valid rate yet (HR) or zero BPM (tempo), show dim version of selected color
     CRGB dim = pulseColor;
     dim.nscale8(30);
     m_ledController->fill(dim);
@@ -52,8 +61,9 @@ void HeartRateAnimation::update(uint16_t currentHeartRate, CRGB pulseColor,
     return;
   }
 
-  // Calculate pulse speed based on heart rate
-  float pulseSpeed = calculatePulseSpeed(avgHeartRate);
+  // Heart rate: slight speed variation by BPM; fixed tempo: strict BPM timing
+  float pulseSpeed =
+      fixedTempoMode ? 1.0f : calculatePulseSpeed(avgHeartRate);
 
   // Update pulse phase (0.0 to 1.0)
   unsigned long deltaTime = currentTime - m_lastUpdateTime;

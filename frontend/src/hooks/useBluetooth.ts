@@ -21,6 +21,9 @@ export function useBluetooth() {
     useState(false);
   const [supportsHeartRateRainbowInPulse, setSupportsHeartRateRainbowInPulse] =
     useState(false);
+  const [tempoBpm, setTempoBpmState] = useState(120);
+  const [tempoBeatMultiplier, setTempoBeatMultiplierState] = useState(1);
+  const [supportsTempoControl, setSupportsTempoControl] = useState(false);
 
   useEffect(() => {
     // Subscribe to connection state changes
@@ -79,6 +82,17 @@ export function useBluetooth() {
       } else {
         setHeartRateRainbowInPulseState(false);
       }
+
+      const supportsTempo = bluetoothService.supportsTempoControl();
+      setSupportsTempoControl(supportsTempo);
+      if (supportsTempo) {
+        const tempo = await bluetoothService.getTempo();
+        setTempoBpmState(tempo.bpm);
+        setTempoBeatMultiplierState(tempo.beatMultiplier);
+      } else {
+        setTempoBpmState(120);
+        setTempoBeatMultiplierState(1);
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to connect";
@@ -94,6 +108,9 @@ export function useBluetooth() {
     setHeartRateRainbowCycleState(false);
     setSupportsHeartRateRainbowInPulse(false);
     setHeartRateRainbowInPulseState(false);
+    setSupportsTempoControl(false);
+    setTempoBpmState(120);
+    setTempoBeatMultiplierState(1);
   }, []);
 
   const setMode = useCallback(async (mode: AnimationMode) => {
@@ -144,6 +161,22 @@ export function useBluetooth() {
     }
   }, []);
 
+  const setTempo = useCallback(async (bpm: number, beatMultiplier: number) => {
+    try {
+      setError(null);
+      await bluetoothService.setTempo(bpm, beatMultiplier);
+      setTempoBpmState(Math.max(40, Math.min(240, Math.round(bpm))));
+      setTempoBeatMultiplierState(
+        beatMultiplier === 2 || beatMultiplier === 4 ? beatMultiplier : 1
+      );
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to set tempo";
+      setError(errorMessage);
+      throw err;
+    }
+  }, []);
+
   const setColor = useCallback(async (r: number, g: number, b: number) => {
     try {
       setError(null);
@@ -170,6 +203,10 @@ export function useBluetooth() {
     heartRateRainbowInPulse,
     setHeartRateRainbowInPulse,
     supportsHeartRateRainbowInPulse,
+    tempoBpm,
+    tempoBeatMultiplier,
+    setTempo,
+    supportsTempoControl,
     isConnected: connectionState === "connected",
   };
 }

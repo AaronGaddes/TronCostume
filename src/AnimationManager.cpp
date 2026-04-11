@@ -12,7 +12,9 @@ AnimationManager::AnimationManager(LEDController *ledController)
       m_initialized(false),
       m_solidColor(CRGB::White), // Default to white
       m_heartRateRainbowCycle(false),
-      m_heartRateRainbowInPulse(false)
+      m_heartRateRainbowInPulse(false),
+      m_tempoBpm(120),
+      m_tempoBeatMultiplier(1)
 {
 }
 
@@ -113,6 +115,7 @@ void AnimationManager::setMode(AnimationMode mode)
     break;
 
   case MODE_HEART_RATE_PULSE:
+  case MODE_TEMPO_PULSE:
     if (m_heartRateAnimation != nullptr)
     {
       m_heartRateAnimation->reset();
@@ -189,18 +192,23 @@ void AnimationManager::update(uint16_t currentHeartRate)
     break;
 
   case MODE_HEART_RATE_PULSE:
-    if (m_heartRateAnimation != nullptr)
-    {
-      CRGB pulseColor = m_solidColor;
-      if (m_heartRateRainbowCycle && !m_heartRateRainbowInPulse)
-      {
-        uint8_t hue = (uint8_t)((millis() / HR_RAINBOW_MS_PER_HUE_STEP) & 0xFF);
-        pulseColor = CHSV(hue, 255, 255);
-      }
-      m_heartRateAnimation->update(currentHeartRate, pulseColor,
-                                   m_heartRateRainbowInPulse);
-    }
+    updateSharedPulse(currentHeartRate, false);
     break;
+
+  case MODE_TEMPO_PULSE:
+  {
+    uint32_t eff = (uint32_t)m_tempoBpm * (uint32_t)m_tempoBeatMultiplier;
+    if (eff < MIN_TEMPO_BPM)
+    {
+      eff = MIN_TEMPO_BPM;
+    }
+    if (eff > MAX_TEMPO_EFFECTIVE_BPM)
+    {
+      eff = MAX_TEMPO_EFFECTIVE_BPM;
+    }
+    updateSharedPulse((uint16_t)eff, true);
+    break;
+  }
 
   default:
     break;
@@ -254,6 +262,48 @@ void AnimationManager::setHeartRateRainbowInPulse(bool enabled)
   m_heartRateRainbowInPulse = enabled;
   Serial.print("Heart rate rainbow (within pulse) ");
   Serial.println(enabled ? "on" : "off");
+}
+
+void AnimationManager::setTempo(uint16_t bpm, uint8_t beatMultiplier)
+{
+  if (bpm < MIN_TEMPO_BPM)
+  {
+    bpm = MIN_TEMPO_BPM;
+  }
+  else if (bpm > MAX_TEMPO_BPM)
+  {
+    bpm = MAX_TEMPO_BPM;
+  }
+
+  if (beatMultiplier != 2 && beatMultiplier != 4)
+  {
+    beatMultiplier = 1;
+  }
+
+  m_tempoBpm = bpm;
+  m_tempoBeatMultiplier = beatMultiplier;
+
+  Serial.print("Tempo ");
+  Serial.print(bpm);
+  Serial.print(" BPM, multiplier ");
+  Serial.println(beatMultiplier);
+}
+
+void AnimationManager::updateSharedPulse(uint16_t rateBpm, bool fixedTempo)
+{
+  if (m_heartRateAnimation == nullptr)
+  {
+    return;
+  }
+
+  CRGB pulseColor = m_solidColor;
+  if (m_heartRateRainbowCycle && !m_heartRateRainbowInPulse)
+  {
+    uint8_t hue = (uint8_t)((millis() / HR_RAINBOW_MS_PER_HUE_STEP) & 0xFF);
+    pulseColor = CHSV(hue, 255, 255);
+  }
+  m_heartRateAnimation->update(rateBpm, pulseColor, m_heartRateRainbowInPulse,
+                               fixedTempo);
 }
 
 void AnimationManager::setSolidColor(uint32_t rgb)

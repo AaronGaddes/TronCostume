@@ -8,6 +8,9 @@
 #define ROLLING_AVERAGE_SIZE 15
 #define MIN_HEART_RATE 60
 #define MAX_HEART_RATE 180
+#define MIN_TEMPO_BPM 40
+#define MAX_TEMPO_BPM 240
+#define MAX_TEMPO_EFFECTIVE_BPM 480 // bpm × beat multiplier cap
 #define PULSE_BASE_BRIGHTNESS 50
 #define PULSE_MAX_BRIGHTNESS 255
 
@@ -17,8 +20,10 @@ public:
   HeartRateAnimation(LEDController *ledController);
   ~HeartRateAnimation();
 
-  // pulseColor: base/dim color. rainbowInPulse: spread+scroll rainbow across the bright wave
-  void update(uint16_t currentHeartRate, CRGB pulseColor, bool rainbowInPulse);
+  // pulseColor: base/dim color. rainbowInPulse: spread+scroll rainbow across the bright wave.
+  // fixedTempoMode: use rateBpm directly (no rolling average); pulse speed follows BPM only.
+  void update(uint16_t rateBpm, CRGB pulseColor, bool rainbowInPulse,
+              bool fixedTempoMode = false);
 
   // Reset animation state
   void reset();

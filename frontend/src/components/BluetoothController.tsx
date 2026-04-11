@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBluetooth } from "@/hooks/useBluetooth";
 import { type AnimationMode, ANIMATION_MODES, MODES } from "@/types/bluetooth";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ const MODE_NAMES: Record<AnimationMode, string> = {
   [ANIMATION_MODES.MODE_FIRE]: "Fire",
   [ANIMATION_MODES.MODE_COLOR_WAVE]: "Color Wave",
   [ANIMATION_MODES.MODE_HEART_RATE_PULSE]: "Heart Rate Pulse",
+  [ANIMATION_MODES.MODE_TEMPO_PULSE]: "Tempo Pulse",
 };
 
 export function BluetoothController() {
@@ -30,11 +31,35 @@ export function BluetoothController() {
     heartRateRainbowInPulse,
     setHeartRateRainbowInPulse,
     supportsHeartRateRainbowInPulse,
+    tempoBpm,
+    tempoBeatMultiplier,
+    setTempo,
+    supportsTempoControl,
     isConnected,
   } = useBluetooth();
 
+  const pulseStyleMode =
+    currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE ||
+    currentMode === ANIMATION_MODES.MODE_TEMPO_PULSE;
+
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSettingMode, setIsSettingMode] = useState(false);
+  const [tempoBpmDraft, setTempoBpmDraft] = useState(() => String(tempoBpm));
+
+  useEffect(() => {
+    setTempoBpmDraft(String(tempoBpm));
+  }, [tempoBpm]);
+
+  const commitTempoBpmDraft = () => {
+    let v = parseInt(tempoBpmDraft, 10);
+    if (Number.isNaN(v)) {
+      setTempoBpmDraft(String(tempoBpm));
+      return;
+    }
+    v = Math.max(40, Math.min(240, v));
+    setTempoBpmDraft(String(v));
+    setTempo(v, tempoBeatMultiplier).catch(console.error);
+  };
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -174,13 +199,98 @@ export function BluetoothController() {
           </div>
         )}
 
+        {/* Tempo Pulse: BPM and subdivision (firmware BLE) */}
+        {isConnected && currentMode === ANIMATION_MODES.MODE_TEMPO_PULSE && (
+          <div className="border rounded-lg p-4 space-y-4">
+            <h2 className="text-lg font-semibold">Beat &amp; tempo</h2>
+            {supportsTempoControl ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <label
+                      htmlFor="tempoBpmRange"
+                      className="text-sm font-medium"
+                    >
+                      Tempo (BPM)
+                    </label>
+                    <span className="text-xs text-muted-foreground">40–240</span>
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <input
+                      id="tempoBpmRange"
+                      type="range"
+                      min={40}
+                      max={240}
+                      value={tempoBpm}
+                      className="w-full sm:flex-1 min-w-0"
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setTempo(v, tempoBeatMultiplier).catch(console.error);
+                      }}
+                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label htmlFor="tempoBpmNumber" className="sr-only">
+                        BPM value
+                      </label>
+                      <input
+                        id="tempoBpmNumber"
+                        type="number"
+                        min={40}
+                        max={240}
+                        step={1}
+                        inputMode="numeric"
+                        className="w-24 border rounded-md px-2 py-1.5 text-sm tabular-nums bg-background"
+                        value={tempoBpmDraft}
+                        onChange={(e) => setTempoBpmDraft(e.target.value)}
+                        onBlur={commitTempoBpmDraft}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            commitTempoBpmDraft();
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
+                      />
+                      <span className="text-sm text-muted-foreground">BPM</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="beatMul" className="text-sm font-medium block">
+                    Pulses per beat
+                  </label>
+                  <select
+                    id="beatMul"
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                    value={tempoBeatMultiplier}
+                    onChange={(e) => {
+                      setTempo(
+                        tempoBpm,
+                        Number(e.target.value)
+                      ).catch(console.error);
+                    }}
+                  >
+                    <option value={1}>1× (one wave per beat)</option>
+                    <option value={2}>2× (twice per beat)</option>
+                    <option value={4}>4× (four times per beat)</option>
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Update device firmware to set tempo from the app.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Color Picker for modes that support color */}
         {isConnected &&
           (currentMode === ANIMATION_MODES.MODE_SOLID ||
             currentMode === ANIMATION_MODES.MODE_BREATHING ||
             currentMode === ANIMATION_MODES.MODE_CHASE ||
             currentMode === ANIMATION_MODES.MODE_TWINKLE ||
-            currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE) && (
+            pulseStyleMode) && (
             <div className="border rounded-lg p-4 space-y-4">
               <h2 className="text-lg font-semibold">Color</h2>
               <div className="flex items-center gap-4">
@@ -200,12 +310,12 @@ export function BluetoothController() {
                   htmlFor="colorPicker"
                   className="text-sm text-muted-foreground"
                 >
-                  {currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE
+                  {pulseStyleMode
                     ? "Solid color (wave and dim LEDs, or dim only with rainbow-on-pulse)"
                     : `Select color for ${MODE_NAMES[currentMode].toLowerCase()} mode`}
                 </label>
               </div>
-              {currentMode === ANIMATION_MODES.MODE_HEART_RATE_PULSE && (
+              {pulseStyleMode && (
                 <div className="pt-3 border-t border-border space-y-3">
                   {supportsHeartRateRainbowCycle ||
                   supportsHeartRateRainbowInPulse ? (
@@ -242,7 +352,7 @@ export function BluetoothController() {
                           />
                           <span>
                             Rainbow spectrum on each traveling pulse (scrolls
-                            with the heartbeat wave)
+                            with the wave)
                           </span>
                         </label>
                       )}

@@ -15,6 +15,7 @@
 #define COLOR_CONTROL_CHAR_UUID "19B10003-E8F2-537E-4F6C-D104768A1214"
 #define HEART_RATE_RAINBOW_CHAR_UUID "19B10004-E8F2-537E-4F6C-D104768A1214"
 #define HEART_RATE_RAINBOW_IN_PULSE_CHAR_UUID "19B10005-E8F2-537E-4F6C-D104768A1214"
+#define TEMPO_CONTROL_CHAR_UUID "19B10006-E8F2-537E-4F6C-D104768A1214"
 
 // Forward declaration
 class AnimationManager;
@@ -58,6 +59,17 @@ class HeartRateRainbowInPulseCallbacks : public BLECharacteristicCallbacks
 {
 public:
   explicit HeartRateRainbowInPulseCallbacks(AnimationManager *animationManager);
+  void onWrite(BLECharacteristic *pCharacteristic) override;
+
+private:
+  AnimationManager *m_animationManager;
+};
+
+// Tempo pulse: 3 bytes little-endian BPM + beat multiplier (1, 2, or 4)
+class TempoControlCallbacks : public BLECharacteristicCallbacks
+{
+public:
+  explicit TempoControlCallbacks(AnimationManager *animationManager);
   void onWrite(BLECharacteristic *pCharacteristic) override;
 
 private:
@@ -108,6 +120,7 @@ private:
   BLECharacteristic *m_pColorControlChar;
   BLECharacteristic *m_pHeartRateRainbowChar;
   BLECharacteristic *m_pHeartRateRainbowInPulseChar;
+  BLECharacteristic *m_pTempoControlChar;
 
   bool m_initialized;
   bool m_deviceConnected;
