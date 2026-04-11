@@ -102,6 +102,99 @@ void ColorControlCallbacks::onWrite(BLECharacteristic *pCharacteristic)
   }
 }
 
+HeartRateRainbowCallbacks::HeartRateRainbowCallbacks(AnimationManager *animationManager)
+    : m_animationManager(animationManager)
+{
+}
+
+void HeartRateRainbowCallbacks::onWrite(BLECharacteristic *pCharacteristic)
+{
+  if (m_animationManager == nullptr || pCharacteristic == nullptr)
+  {
+    return;
+  }
+
+  std::string value = pCharacteristic->getValue();
+  if (value.length() != 1)
+  {
+    Serial.print("BLE: Invalid heart rate rainbow data length: ");
+    Serial.println(value.length());
+    return;
+  }
+
+  bool enabled = value[0] != 0;
+  m_animationManager->setHeartRateRainbowCycle(enabled);
+  uint8_t stored = enabled ? 1 : 0;
+  pCharacteristic->setValue(&stored, 1);
+}
+
+HeartRateRainbowInPulseCallbacks::HeartRateRainbowInPulseCallbacks(
+    AnimationManager *animationManager)
+    : m_animationManager(animationManager)
+{
+}
+
+void HeartRateRainbowInPulseCallbacks::onWrite(BLECharacteristic *pCharacteristic)
+{
+  if (m_animationManager == nullptr || pCharacteristic == nullptr)
+  {
+    return;
+  }
+
+  std::string value = pCharacteristic->getValue();
+  if (value.length() != 1)
+  {
+    Serial.print("BLE: Invalid heart rate rainbow-in-pulse data length: ");
+    Serial.println(value.length());
+    return;
+  }
+
+  bool enabled = value[0] != 0;
+  m_animationManager->setHeartRateRainbowInPulse(enabled);
+  uint8_t stored = enabled ? 1 : 0;
+  pCharacteristic->setValue(&stored, 1);
+}
+
+TempoControlCallbacks::TempoControlCallbacks(AnimationManager *animationManager)
+    : m_animationManager(animationManager)
+{
+}
+
+void TempoControlCallbacks::onWrite(BLECharacteristic *pCharacteristic)
+{
+  if (m_animationManager == nullptr || pCharacteristic == nullptr)
+  {
+    return;
+  }
+
+  std::string value = pCharacteristic->getValue();
+  if (value.length() != 3)
+  {
+    Serial.print("BLE: Invalid tempo data length: ");
+    Serial.println(value.length());
+    return;
+  }
+
+  uint16_t bpm =
+      (uint16_t)(uint8_t)value[0] | (((uint16_t)(uint8_t)value[1]) << 8);
+  uint8_t mult = (uint8_t)value[2];
+
+  if (mult > 3)
+  {
+    mult = 2;
+  }
+
+  m_animationManager->setTempo(bpm, mult);
+
+  uint16_t outBpm = m_animationManager->getTempoBpm();
+  uint8_t buf[3] = {
+      (uint8_t)(outBpm & 0xFF),
+      (uint8_t)(outBpm >> 8),
+      m_animationManager->getTempoTimeSignature(),
+  };
+  pCharacteristic->setValue(buf, 3);
+}
+
 // BLEControlService implementation
 BLEControlService::BLEControlService()
     : BLEControlService(nullptr)
@@ -114,6 +207,9 @@ BLEControlService::BLEControlService(AnimationManager *animationManager)
       m_pModeControlChar(nullptr),
       m_pModeStatusChar(nullptr),
       m_pColorControlChar(nullptr),
+      m_pHeartRateRainbowChar(nullptr),
+      m_pHeartRateRainbowInPulseChar(nullptr),
+      m_pTempoControlChar(nullptr),
       m_initialized(false),
       m_deviceConnected(false),
       m_oldDeviceConnected(false),
@@ -208,6 +304,45 @@ void BLEControlService::setupService()
     m_pColorControlChar->setCallbacks(
         new ColorControlCallbacks(m_animationManager));
   }
+
+  m_pHeartRateRainbowChar = m_pService->createCharacteristic(
+      HEART_RATE_RAINBOW_CHAR_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+
+  if (m_animationManager != nullptr)
+  {
+    m_pHeartRateRainbowChar->setCallbacks(
+        new HeartRateRainbowCallbacks(m_animationManager));
+  }
+
+  uint8_t rainbowOff = 0;
+  m_pHeartRateRainbowChar->setValue(&rainbowOff, 1);
+
+  m_pHeartRateRainbowInPulseChar = m_pService->createCharacteristic(
+      HEART_RATE_RAINBOW_IN_PULSE_CHAR_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+
+  if (m_animationManager != nullptr)
+  {
+    m_pHeartRateRainbowInPulseChar->setCallbacks(
+        new HeartRateRainbowInPulseCallbacks(m_animationManager));
+  }
+
+  uint8_t inPulseOff = 0;
+  m_pHeartRateRainbowInPulseChar->setValue(&inPulseOff, 1);
+
+  m_pTempoControlChar = m_pService->createCharacteristic(
+      TEMPO_CONTROL_CHAR_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+
+  if (m_animationManager != nullptr)
+  {
+    m_pTempoControlChar->setCallbacks(
+        new TempoControlCallbacks(m_animationManager));
+  }
+
+  uint8_t tempoInit[3] = {120, 0, 2}; // 120 BPM LE, time sig 2 = 4/4
+  m_pTempoControlChar->setValue(tempoInit, 3);
 
   // Start the service
   m_pService->start();

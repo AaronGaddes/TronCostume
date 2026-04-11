@@ -22,6 +22,8 @@ const char *getModeName(AnimationMode mode)
     return "Color Wave";
   case MODE_HEART_RATE_PULSE:
     return "Heart Rate Pulse";
+  case MODE_TEMPO_PULSE:
+    return "Tempo Pulse";
   default:
     return "Unknown";
   }
